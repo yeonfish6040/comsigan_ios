@@ -118,8 +118,52 @@ nonisolated struct Timetable: Codable, Hashable, Sendable {
         return nil
     }
 
+    /// 앞으로 있을 수업. 오늘 남은 교시를 먼저 채우고, 없으면 다음 등교일로 넘어간다.
+    func upcoming(at date: Date = Date(), afterPeriod: Int = 0, limit: Int = 3) -> [UpcomingClass] {
+        let today = Self.dayIndex(for: date)
+        let startDay = today ?? 0
+        var result: [UpcomingClass] = []
+
+        for offset in 0..<Self.dayNames.count {
+            let day = (startDay + offset) % Self.dayNames.count
+            let from = (offset == 0 && today != nil) ? afterPeriod + 1 : 1
+            let count = periodCounts.indices.contains(day) ? periodCounts[day] : 0
+            guard from <= count else { continue }
+
+            for period in from...count {
+                let value = cell(day: day, period: period)
+                if value.isEmpty { continue }
+                result.append(
+                    UpcomingClass(
+                        day: day,
+                        period: period,
+                        cell: value,
+                        isToday: offset == 0 && today != nil
+                    )
+                )
+                if result.count >= limit { return result }
+            }
+        }
+        return result
+    }
+
     func cell(day: Int, period: Int) -> TimetableCell {
         guard days.indices.contains(day), days[day].indices.contains(period - 1) else { return .empty }
         return days[day][period - 1]
+    }
+}
+
+/// 위젯이 "다음 수업"을 보여줄 때 쓰는 항목.
+nonisolated struct UpcomingClass: Codable, Hashable, Sendable, Identifiable {
+    var day: Int
+    var period: Int
+    var cell: TimetableCell
+    var isToday: Bool
+
+    var id: String { "\(day)-\(period)" }
+
+    /// "7교시" 또는 "금 1교시".
+    var label: String {
+        isToday ? "\(period)교시" : "\(Timetable.dayNames[day]) \(period)교시"
     }
 }

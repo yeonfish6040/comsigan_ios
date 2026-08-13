@@ -86,6 +86,7 @@ struct ContentView: View {
             }
             .buttonStyle(.plain)
             .help("학교 찾기")
+            .tutorialAnchor(TutorialTarget.school)
 
             Picker("학년", selection: $grade) {
                 ForEach(availableGrades, id: \.self) { Text("\($0)학년").tag($0) }
@@ -96,6 +97,7 @@ struct ContentView: View {
                 ForEach(1...max(classCount(for: grade), 1), id: \.self) { Text("\($0)반").tag($0) }
             }
             .frame(width: 100)
+            .tutorialAnchor(TutorialTarget.klass)
 
             Spacer()
 

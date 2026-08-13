@@ -20,6 +20,59 @@ nonisolated enum AppSettings {
         static let klass = "klass"
         static let schoolCode = "schoolCode"
         static let schoolName = "schoolName"
+        static let widgetTheme = "widgetTheme"
+        static let widgetLayoutPrefix = "widgetLayout_"
+        static let customPalettes = "customPalettes"
+        static let tutorialDone = "tutorialDone"
+    }
+
+    // MARK: 위젯 꾸미기
+
+    /// 위젯 테마 id. 투명 배경도 테마 중 하나다.
+    static var widgetThemeId: String? {
+        get { defaults.string(forKey: Key.widgetTheme) }
+        set { defaults.set(newValue, forKey: Key.widgetTheme) }
+    }
+
+    /// 위젯 자리(크기)별로 고른 레이아웃 id.
+    static func widgetLayoutId(slot: String) -> String? {
+        defaults.string(forKey: Key.widgetLayoutPrefix + slot)
+    }
+
+    static func setWidgetLayoutId(_ id: String, slot: String) {
+        defaults.set(id, forKey: Key.widgetLayoutPrefix + slot)
+    }
+
+    /// 사용자가 만든 팔레트 목록.
+    static func customPalettes() -> [CustomPalette] {
+        guard let data = defaults.data(forKey: Key.customPalettes),
+              let decoded = try? JSONDecoder().decode([CustomPalette].self, from: data) else { return [] }
+        return decoded
+    }
+
+    static func saveCustomPalette(_ palette: CustomPalette) {
+        var list = customPalettes()
+        if let index = list.firstIndex(where: { $0.id == palette.id }) {
+            list[index] = palette
+        } else {
+            list.append(palette)
+        }
+        writeCustomPalettes(list)
+    }
+
+    static func deleteCustomPalette(id: String) {
+        writeCustomPalettes(customPalettes().filter { $0.id != id })
+    }
+
+    private static func writeCustomPalettes(_ list: [CustomPalette]) {
+        guard let data = try? JSONEncoder().encode(list) else { return }
+        defaults.set(data, forKey: Key.customPalettes)
+    }
+
+    /// 첫 실행 안내를 이미 봤는지.
+    static var isTutorialDone: Bool {
+        get { defaults.bool(forKey: Key.tutorialDone) }
+        set { defaults.set(newValue, forKey: Key.tutorialDone) }
     }
 
     /// 처음 실행 시 기본으로 보던 학교(검색 결과의 이름·코드 그대로).

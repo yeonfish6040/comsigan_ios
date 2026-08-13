@@ -83,6 +83,7 @@ struct TimetableProvider: AppIntentTimelineProvider {
 struct comsiganWidgetEntryView: View {
     @Environment(\.widgetFamily) private var family
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.widgetRenderingMode) private var renderingMode
     var entry: TimetableProvider.Entry
 
     private var slot: WidgetSlot {
@@ -96,7 +97,9 @@ struct comsiganWidgetEntryView: View {
     private var theme: any WidgetTheme { WidgetThemes.byId(AppSettings.widgetThemeId) }
 
     var body: some View {
-        let palette = theme.palette(dark: colorScheme == .dark)
+        // 전체 색으로 그릴 수 없는 모드(비활성 데스크탑 위젯 등)에서는 알파 기반 팔레트를 쓴다.
+        let base = theme.palette(dark: colorScheme == .dark)
+        let palette = renderingMode == .fullColor ? base : base.vibrant
         let layout = WidgetLayouts.byId(
             AppSettings.widgetLayoutId(slot: slot.rawValue),
             fallback: slot.defaultLayout
@@ -114,7 +117,7 @@ struct comsiganWidgetEntryView: View {
         layout.body(scope)
             // 투명 테마는 배경을 비운다.
             .containerBackground(for: .widget) {
-                if theme.isTranslucent {
+                if theme.isTranslucent || renderingMode != .fullColor {
                     Color.clear
                 } else {
                     palette.background

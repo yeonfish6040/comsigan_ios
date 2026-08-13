@@ -25,6 +25,25 @@ nonisolated struct WidgetPalette: Sendable, Equatable {
     var changed: Color
 }
 
+extension WidgetPalette {
+    /// 위젯이 비활성일 때 macOS는 vibrant 모드로 그린다. 이 모드에서는 내용이 전부
+    /// 흰색으로 매핑되므로, 불투명한 칸 배경은 흰 덩어리가 되고 그 위 글자가 사라진다.
+    /// 그래서 색 대신 "알파 차이"로 층을 나눈 팔레트를 쓴다.
+    var vibrant: WidgetPalette {
+        WidgetPalette(
+            background: .clear,
+            cell: Color.white.opacity(0.14),
+            cellToday: Color.white.opacity(0.22),
+            cellCurrent: Color.white.opacity(0.38),
+            text: Color.white,
+            textMuted: Color.white.opacity(0.65),
+            textOnCurrent: Color.white,
+            accent: Color.white.opacity(0.85),
+            changed: Color.white.opacity(0.9)
+        )
+    }
+}
+
 /// 위젯 테마. 새 테마는 여기 구현체를 만들고 [WidgetThemes.builtIn]에 한 줄 더하면 된다.
 nonisolated protocol WidgetTheme: Sendable {
     var id: String { get }

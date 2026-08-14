@@ -177,6 +177,10 @@ struct ContentView: View {
         AppSettings.persist(grade: grade, klass: klass)
         AppSettings.persist(school: School(code: schoolCode, name: schoolName, region: ""))
         reloadWidgets()
+        #if os(iOS)
+        // 애플워치는 App Group을 공유할 수 없어 선택만 따로 보낸다.
+        WatchSettingsSync.shared.push()
+        #endif
     }
 
     private func load(force: Bool = false) async {

@@ -12,6 +12,13 @@ import SwiftUI
 
 @main
 struct comsiganApp: App {
+    init() {
+        #if os(iOS)
+        // 워치로 설정을 넘기려면 세션을 미리 열어 둬야 한다.
+        WatchSettingsSync.shared.activate()
+        #endif
+    }
+
     #if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     #endif

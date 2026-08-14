@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		DA6E0708302D3A05000B03AE /* comsiganWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA6E0701302D3A05000B03AE /* comsiganWidgetExtension.appex */; platformFilters = (macos, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DA6E0717302D3A05000B03AE /* comsiganWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = DA6E0711302D3A05000B03AE /* comsiganWatch.app */; platformFilters = (ios, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DA6E0727302D3A05000B03AE /* comsiganWatchWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA6E0721302D3A05000B03AE /* comsiganWatchWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -17,6 +19,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = DA6E0700302D3A05000B03AE;
 			remoteInfo = comsiganWidgetExtension;
+		};
+		DA6E0719302D3A05000B03AE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DA6E0624302D3A03000B03AE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DA6E0710302D3A05000B03AE;
+			remoteInfo = comsiganWatch;
+		};
+		DA6E0729302D3A05000B03AE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DA6E0624302D3A03000B03AE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DA6E0720302D3A05000B03AE;
+			remoteInfo = comsiganWatchWidgetExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -32,11 +48,35 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DA6E0716302D3A05000B03AE /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				DA6E0717302D3A05000B03AE /* comsiganWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA6E0726302D3A05000B03AE /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				DA6E0727302D3A05000B03AE /* comsiganWatchWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		DA6E062C302D3A03000B03AE /* comsigan.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = comsigan.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA6E0701302D3A05000B03AE /* comsiganWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = comsiganWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA6E0711302D3A05000B03AE /* comsiganWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = comsiganWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA6E0721302D3A05000B03AE /* comsiganWatchWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = comsiganWatchWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -53,6 +93,16 @@
 		DA6E0703302D3A05000B03AE /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		DA6E0712302D3A05000B03AE /* comsiganWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = comsiganWatch;
+			sourceTree = "<group>";
+		};
+		DA6E0722302D3A05000B03AE /* comsiganWatchWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = comsiganWatchWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -72,6 +122,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DA6E0714302D3A05000B03AE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA6E0724302D3A05000B03AE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -81,6 +145,8 @@
 				DA6E062E302D3A03000B03AE /* comsigan */,
 				DA6E0702302D3A05000B03AE /* comsiganWidget */,
 				DA6E0703302D3A05000B03AE /* Shared */,
+				DA6E0712302D3A05000B03AE /* comsiganWatch */,
+				DA6E0722302D3A05000B03AE /* comsiganWatchWidget */,
 				DA6E062D302D3A03000B03AE /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +156,8 @@
 			children = (
 				DA6E062C302D3A03000B03AE /* comsigan.app */,
 				DA6E0701302D3A05000B03AE /* comsiganWidgetExtension.appex */,
+				DA6E0711302D3A05000B03AE /* comsiganWatch.app */,
+				DA6E0721302D3A05000B03AE /* comsiganWatchWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -105,11 +173,13 @@
 				DA6E0629302D3A03000B03AE /* Frameworks */,
 				DA6E062A302D3A03000B03AE /* Resources */,
 				DA6E0707302D3A05000B03AE /* Embed Foundation Extensions */,
+				DA6E0716302D3A05000B03AE /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				DA6E0709302D3A05000B03AE /* PBXTargetDependency */,
+				DA6E0718302D3A05000B03AE /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				DA6E062E302D3A03000B03AE /* comsigan */,
@@ -143,6 +213,54 @@
 			);
 			productName = comsiganWidgetExtension;
 			productReference = DA6E0701302D3A05000B03AE /* comsiganWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		DA6E0710302D3A05000B03AE /* comsiganWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA6E071A302D3A05000B03AE /* Build configuration list for PBXNativeTarget "comsiganWatch" */;
+			buildPhases = (
+				DA6E0713302D3A05000B03AE /* Sources */,
+				DA6E0714302D3A05000B03AE /* Frameworks */,
+				DA6E0715302D3A05000B03AE /* Resources */,
+				DA6E0726302D3A05000B03AE /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DA6E0728302D3A05000B03AE /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				DA6E0712302D3A05000B03AE /* comsiganWatch */,
+				DA6E0703302D3A05000B03AE /* Shared */,
+			);
+			name = comsiganWatch;
+			packageProductDependencies = (
+			);
+			productName = comsiganWatch;
+			productReference = DA6E0711302D3A05000B03AE /* comsiganWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		DA6E0720302D3A05000B03AE /* comsiganWatchWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA6E072A302D3A05000B03AE /* Build configuration list for PBXNativeTarget "comsiganWatchWidgetExtension" */;
+			buildPhases = (
+				DA6E0723302D3A05000B03AE /* Sources */,
+				DA6E0724302D3A05000B03AE /* Frameworks */,
+				DA6E0725302D3A05000B03AE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				DA6E0722302D3A05000B03AE /* comsiganWatchWidget */,
+				DA6E0703302D3A05000B03AE /* Shared */,
+			);
+			name = comsiganWatchWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = comsiganWatchWidgetExtension;
+			productReference = DA6E0721302D3A05000B03AE /* comsiganWatchWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -179,6 +297,8 @@
 			targets = (
 				DA6E062B302D3A03000B03AE /* comsigan */,
 				DA6E0700302D3A05000B03AE /* comsiganWidgetExtension */,
+				DA6E0710302D3A05000B03AE /* comsiganWatch */,
+				DA6E0720302D3A05000B03AE /* comsiganWatchWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -192,6 +312,20 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		DA6E0706302D3A05000B03AE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA6E0715302D3A05000B03AE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA6E0725302D3A05000B03AE /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -215,6 +349,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DA6E0713302D3A05000B03AE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA6E0723302D3A05000B03AE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -225,6 +373,17 @@
 			);
 			target = DA6E0700302D3A05000B03AE /* comsiganWidgetExtension */;
 			targetProxy = DA6E070A302D3A05000B03AE /* PBXContainerItemProxy */;
+		};
+		DA6E0718302D3A05000B03AE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilters = (ios, );
+			target = DA6E0710302D3A05000B03AE /* comsiganWatch */;
+			targetProxy = DA6E0719302D3A05000B03AE /* PBXContainerItemProxy */;
+		};
+		DA6E0728302D3A05000B03AE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DA6E0720302D3A05000B03AE /* comsiganWatchWidgetExtension */;
+			targetProxy = DA6E0729302D3A05000B03AE /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -515,6 +674,120 @@
 			};
 			name = Release;
 		};
+		DA6E071B302D3A05000B03AE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = B8FVLQBL7A;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/comsiganWatch-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "컴시간";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.yftech.comsigan;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yftech.comsigan.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		DA6E071C302D3A05000B03AE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = B8FVLQBL7A;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/comsiganWatch-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "컴시간";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.yftech.comsigan;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yftech.comsigan.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		DA6E072B302D3A05000B03AE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = B8FVLQBL7A;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/comsiganWatchWidget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "시간표";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yftech.comsigan.watchkitapp.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		DA6E072C302D3A05000B03AE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = B8FVLQBL7A;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/comsiganWatchWidget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "시간표";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yftech.comsigan.watchkitapp.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -541,6 +814,24 @@
 			buildConfigurations = (
 				DA6E070C302D3A05000B03AE /* Debug */,
 				DA6E070D302D3A05000B03AE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DA6E071A302D3A05000B03AE /* Build configuration list for PBXNativeTarget "comsiganWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA6E071B302D3A05000B03AE /* Debug */,
+				DA6E071C302D3A05000B03AE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DA6E072A302D3A05000B03AE /* Build configuration list for PBXNativeTarget "comsiganWatchWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA6E072B302D3A05000B03AE /* Debug */,
+				DA6E072C302D3A05000B03AE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -58,14 +58,14 @@ nonisolated struct School: Codable, Sendable, Hashable, Identifiable {
 // MARK: - EUC-KR 유틸
 
 extension String.Encoding {
-    static let eucKR = String.Encoding(
+    nonisolated static let eucKR = String.Encoding(
         rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.EUC_KR.rawValue))
     )
 }
 
 extension String {
     /// 컴시간 페이지가 EUC-KR이라 검색어도 EUC-KR 바이트로 인코딩해야 결과가 나온다.
-    static func eucKRPercentEncoded(_ value: String) -> String? {
+    nonisolated static func eucKRPercentEncoded(_ value: String) -> String? {
         guard let data = value.data(using: .eucKR) else { return nil }
         var result = ""
         for byte in data {
@@ -82,7 +82,7 @@ extension String {
         return result
     }
 
-    fileprivate func firstMatch(_ pattern: String) -> String? {
+    nonisolated fileprivate func firstMatch(_ pattern: String) -> String? {
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: self, range: NSRange(startIndex..., in: self)),
               match.numberOfRanges > 1,

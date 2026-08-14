@@ -25,7 +25,7 @@ nonisolated struct WidgetPalette: Sendable, Equatable {
     var changed: Color
 }
 
-extension WidgetPalette {
+nonisolated extension WidgetPalette {
     /// 위젯이 비활성일 때 macOS는 vibrant 모드로 그린다. 이 모드에서는 내용이 전부
     /// 흰색으로 매핑되므로, 불투명한 칸 배경은 흰 덩어리가 되고 그 위 글자가 사라진다.
     /// 그래서 색 대신 "알파 차이"로 층을 나눈 팔레트를 쓴다.
@@ -55,7 +55,7 @@ nonisolated protocol WidgetTheme: Sendable {
 }
 
 extension WidgetTheme {
-    var isTranslucent: Bool { false }
+    nonisolated var isTranslucent: Bool { false }
 }
 
 // MARK: - 기본 테마
@@ -293,14 +293,15 @@ nonisolated enum RGBA {
     }
 
     static func string(from color: Color) -> String {
-        let resolved = NSColor(color).usingColorSpace(.sRGB) ?? NSColor.black
-        let channel = { (value: CGFloat) in Int((value * 255).rounded()) }
+        // 플랫폼마다 색을 꺼내는 방법이 달라 SwiftUI가 해석해 준 값을 쓴다.
+        let resolved = color.resolve(in: EnvironmentValues())
+        let channel = { (value: Float) in Int((value * 255).rounded()) }
         return String(
             format: "#%02X%02X%02X%02X",
-            channel(resolved.redComponent),
-            channel(resolved.greenComponent),
-            channel(resolved.blueComponent),
-            channel(resolved.alphaComponent)
+            channel(resolved.red),
+            channel(resolved.green),
+            channel(resolved.blue),
+            channel(resolved.opacity)
         )
     }
 }

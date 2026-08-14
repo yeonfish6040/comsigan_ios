@@ -33,7 +33,9 @@ struct MainView: View {
                 .tabItem { Text(MainTab.about.rawValue) }
                 .tag(MainTab.about)
         }
+        #if os(macOS)
         .frame(minWidth: 640, minHeight: 520)
+        #endif
         .environment(anchors)
         .overlay {
             if showsTutorial {

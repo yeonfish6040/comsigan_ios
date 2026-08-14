@@ -1,0 +1,18 @@
+{
+  "images": [
+    {
+      "filename": "layer_400x240@1x.png",
+      "idiom": "tv",
+      "scale": "1x"
+    },
+    {
+      "filename": "layer_400x240@2x.png",
+      "idiom": "tv",
+      "scale": "2x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

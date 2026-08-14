@@ -7,7 +7,9 @@
 
 import Combine
 import SwiftUI
+#if canImport(WidgetKit)
 import WidgetKit
+#endif
 
 struct ContentView: View {
     // App Group에 저장해 위젯이 같은 값을 읽는다.
@@ -47,7 +49,9 @@ struct ContentView: View {
             footer
         }
         .padding(20)
+        #if os(macOS)
         .frame(minWidth: 620, minHeight: 460)
+        #endif
         .task { await load() }
         .onReceive(ticker) { now = $0 }
         .onChange(of: grade) { _, _ in
@@ -72,43 +76,73 @@ struct ContentView: View {
     }
 
     private var header: some View {
+        // 넓은 화면은 한 줄로, 좁은 화면(아이폰)은 학교명과 선택줄을 나눠 놓는다.
+        #if os(macOS)
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Button {
-                isSearchingSchool = true
-            } label: {
-                HStack(spacing: 4) {
-                    Text(schoolName.isEmpty ? "학교 선택" : schoolName)
-                        .font(.title2.bold())
-                    Image(systemName: "chevron.down")
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .buttonStyle(.plain)
-            .help("학교 찾기")
-            .tutorialAnchor(TutorialTarget.school)
-
-            Picker("학년", selection: $grade) {
-                ForEach(availableGrades, id: \.self) { Text("\($0)학년").tag($0) }
-            }
-            .frame(width: 110)
-
-            Picker("반", selection: $klass) {
-                ForEach(1...max(classCount(for: grade), 1), id: \.self) { Text("\($0)반").tag($0) }
-            }
-            .frame(width: 100)
-            .tutorialAnchor(TutorialTarget.klass)
-
+            schoolButton
+            gradePicker.frame(width: 110)
+            classPicker.frame(width: 100)
             Spacer()
-
-            Button {
-                Task { await load(force: true) }
-            } label: {
-                Label("새로고침", systemImage: "arrow.clockwise")
-            }
-            .disabled(isLoading)
+            refreshButton
         }
         .labelsHidden()
+        #else
+        VStack(alignment: .leading, spacing: 8) {
+            schoolButton
+            HStack(spacing: 10) {
+                gradePicker
+                classPicker
+                Spacer()
+                refreshButton
+            }
+        }
+        .labelsHidden()
+        #endif
+    }
+
+    private var schoolButton: some View {
+        Button {
+            isSearchingSchool = true
+        } label: {
+            HStack(spacing: 4) {
+                Text(schoolName.isEmpty ? "학교 선택" : schoolName)
+                    .font(.title2.bold())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Image(systemName: "chevron.down")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .help("학교 찾기")
+        .tutorialAnchor(TutorialTarget.school)
+    }
+
+    private var gradePicker: some View {
+        Picker("학년", selection: $grade) {
+            ForEach(availableGrades, id: \.self) { Text("\($0)학년").tag($0) }
+        }
+    }
+
+    private var classPicker: some View {
+        Picker("반", selection: $klass) {
+            ForEach(1...max(classCount(for: grade), 1), id: \.self) { Text("\($0)반").tag($0) }
+        }
+        .tutorialAnchor(TutorialTarget.klass)
+    }
+
+    private var refreshButton: some View {
+        Button {
+            Task { await load(force: true) }
+        } label: {
+            #if os(macOS)
+            Label("새로고침", systemImage: "arrow.clockwise")
+            #else
+            Image(systemName: "arrow.clockwise")
+            #endif
+        }
+        .disabled(isLoading)
     }
 
     private var footer: some View {
@@ -142,7 +176,7 @@ struct ContentView: View {
     private func publishSelection() {
         AppSettings.persist(grade: grade, klass: klass)
         AppSettings.persist(school: School(code: schoolCode, name: schoolName, region: ""))
-        WidgetCenter.shared.reloadAllTimelines()
+        reloadWidgets()
     }
 
     private func load(force: Bool = false) async {
@@ -154,7 +188,7 @@ struct ContentView: View {
             classCounts = document.classCounts
             timetable = try document.timetable(grade: grade, klass: klass)
             errorText = nil
-            WidgetCenter.shared.reloadAllTimelines()
+            reloadWidgets()
         } catch {
             errorText = error.localizedDescription
             if timetable?.grade != grade || timetable?.klass != klass { timetable = nil }

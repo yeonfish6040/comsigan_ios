@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		DA6E0708302D3A05000B03AE /* comsiganWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA6E0701302D3A05000B03AE /* comsiganWidgetExtension.appex */; platformFilters = (macos, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		DA6E0717302D3A05000B03AE /* comsiganWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = DA6E0711302D3A05000B03AE /* comsiganWatch.app */; platformFilters = (ios, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DA6E0708302D3A05000B03AE /* comsiganWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA6E0701302D3A05000B03AE /* comsiganWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DA6E0717302D3A05000B03AE /* comsiganWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = DA6E0711302D3A05000B03AE /* comsiganWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		DA6E0727302D3A05000B03AE /* comsiganWatchWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA6E0721302D3A05000B03AE /* comsiganWatchWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -230,8 +230,8 @@
 				DA6E0728302D3A05000B03AE /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				DA6E0712302D3A05000B03AE /* comsiganWatch */,
 				DA6E0703302D3A05000B03AE /* Shared */,
+				DA6E0712302D3A05000B03AE /* comsiganWatch */,
 			);
 			name = comsiganWatch;
 			packageProductDependencies = (
@@ -253,8 +253,8 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				DA6E0722302D3A05000B03AE /* comsiganWatchWidget */,
 				DA6E0703302D3A05000B03AE /* Shared */,
+				DA6E0722302D3A05000B03AE /* comsiganWatchWidget */,
 			);
 			name = comsiganWatchWidgetExtension;
 			packageProductDependencies = (
@@ -376,7 +376,7 @@
 		};
 		DA6E0718302D3A05000B03AE /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			platformFilters = (ios, );
+			platformFilter = ios;
 			target = DA6E0710302D3A05000B03AE /* comsiganWatch */;
 			targetProxy = DA6E0719302D3A05000B03AE /* PBXContainerItemProxy */;
 		};
@@ -519,6 +519,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/comsigan-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "컴시간";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -570,6 +571,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/comsigan-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "컴시간";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -618,6 +620,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/comsiganWidget-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "시간표";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
@@ -627,15 +630,16 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yftech.comsigan.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
-				SDKROOT = macosx;
+				SDKROOT = auto;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -653,6 +657,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/comsiganWidget-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "시간표";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
@@ -662,15 +667,16 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yftech.comsigan.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
-				SDKROOT = macosx;
+				SDKROOT = auto;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -747,7 +753,10 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/comsiganWatchWidget-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "시간표";
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yftech.comsigan.watchkitapp.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -772,7 +781,10 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/comsiganWatchWidget-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "시간표";
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yftech.comsigan.watchkitapp.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";

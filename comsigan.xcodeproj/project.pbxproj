@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		DA6E0708302D3A05000B03AE /* comsiganWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA6E0701302D3A05000B03AE /* comsiganWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DA6E0708302D3A05000B03AE /* comsiganWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA6E0701302D3A05000B03AE /* comsiganWidgetExtension.appex */; platformFilters = (ios, macos, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		DA6E0717302D3A05000B03AE /* comsiganWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = DA6E0711302D3A05000B03AE /* comsiganWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		DA6E0727302D3A05000B03AE /* comsiganWatchWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA6E0721302D3A05000B03AE /* comsiganWatchWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */

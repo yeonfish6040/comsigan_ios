@@ -27,17 +27,17 @@ struct WatchProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<WatchEntry>) -> Void) {
         Task {
             let first = await entry()
-            // 교시가 바뀌는 시점마다 다시 그리도록 오늘 남은 교시 시작 시각을 엔트리로 넣는다.
+
+            // 30초 간격 엔트리를 미리 채워 두면 앱을 깨우지 않고도 "지금 수업"이 따라간다.
+            // (교시 경계만 넣으면 그 사이 상태 변화가 반영되지 않는다.)
             var entries = [first]
-            if let timetable = first.timetable, let day = Timetable.dayIndex(for: first.date) {
-                let count = timetable.periodCounts.indices.contains(day) ? timetable.periodCounts[day] : 0
-                for period in stride(from: 1, through: count, by: 1) {
-                    guard let start = timetable.periodTime(period)?.start(on: first.date), start > first.date else { continue }
-                    entries.append(
-                        WatchEntry(date: start, timetable: timetable, grade: first.grade, klass: first.klass)
-                    )
-                }
+            for step in 1...60 {
+                let date = first.date.addingTimeInterval(Double(step) * 30)
+                entries.append(
+                    WatchEntry(date: date, timetable: first.timetable, grade: first.grade, klass: first.klass)
+                )
             }
+
             completion(Timeline(entries: entries, policy: .after(first.date.addingTimeInterval(30 * 60))))
         }
     }

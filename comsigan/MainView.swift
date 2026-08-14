@@ -14,6 +14,14 @@ private enum MainTab: String, CaseIterable, Identifiable {
     case about = "정보"
 
     var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .timetable: return "calendar"
+        case .widget: return "square.grid.2x2"
+        case .about: return "info.circle"
+        }
+    }
 }
 
 struct MainView: View {
@@ -24,13 +32,13 @@ struct MainView: View {
     var body: some View {
         TabView(selection: $tab) {
             ContentView()
-                .tabItem { Text(MainTab.timetable.rawValue) }
+                .tabItem { Label(MainTab.timetable.rawValue, systemImage: MainTab.timetable.icon) }
                 .tag(MainTab.timetable)
             WidgetSettingsView()
-                .tabItem { Text(MainTab.widget.rawValue) }
+                .tabItem { Label(MainTab.widget.rawValue, systemImage: MainTab.widget.icon) }
                 .tag(MainTab.widget)
             AboutView()
-                .tabItem { Text(MainTab.about.rawValue) }
+                .tabItem { Label(MainTab.about.rawValue, systemImage: MainTab.about.icon) }
                 .tag(MainTab.about)
         }
         #if os(macOS)

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import WidgetKit
 
 struct WatchTimetableView: View {
     @State private var timetable: Timetable?
@@ -122,6 +123,8 @@ struct WatchTimetableView: View {
                 forceRefresh: force
             )
             errorText = nil
+            // 새로 받은 시간표를 컴플리케이션에도 반영한다.
+            WidgetCenter.shared.reloadAllTimelines()
         } catch {
             errorText = error.localizedDescription
         }

@@ -24,7 +24,7 @@ struct SchoolSearchView: View {
 
             HStack {
                 TextField("학교명 (예: 한국디지털미디어고)", text: $query)
-                    .borderedField()
+                    .textFieldStyle(.roundedBorder)
                     .onSubmit { Task { await search() } }
                 Button("검색") { Task { await search() } }
                     .disabled(query.trimmingCharacters(in: .whitespaces).count < 2 || isSearching)
@@ -55,7 +55,7 @@ struct SchoolSearchView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    .insetListStyle()
+                    .listStyle(.inset)
                 }
             }
             .frame(minHeight: 220)

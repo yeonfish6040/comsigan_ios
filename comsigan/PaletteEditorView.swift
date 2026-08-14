@@ -24,7 +24,7 @@ struct PaletteEditorView: View {
                 PalettePreview(palette: palette.palette(), translucent: palette.isTranslucent)
                 VStack(alignment: .leading, spacing: 8) {
                     TextField("이름", text: $palette.name)
-                        .borderedField()
+                        .textFieldStyle(.roundedBorder)
                     Toggle("배경이 비치는 테마", isOn: $palette.isTranslucent)
                         .toggleStyle(.switch)
                 }
@@ -52,7 +52,7 @@ struct PaletteEditorView: View {
                 Spacer()
                 Button("취소", action: onCancel)
                 Button("저장") { onSave(palette) }
-                    .defaultActionShortcut()
+                    .keyboardShortcut(.defaultAction)
             }
         }
         .padding(20)
@@ -72,21 +72,14 @@ private struct ColorRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            // tvOS에는 컬러 피커가 없어 색 견본만 보여주고 값은 아래 입력칸으로 고친다.
-            #if os(tvOS)
-            RoundedRectangle(cornerRadius: 6)
-                .fill(slot.get(palette.palette()))
-                .frame(width: 44, height: 28)
-            #else
             ColorPicker("", selection: colorBinding, supportsOpacity: true)
                 .labelsHidden()
                 .frame(width: 44)
-            #endif
             Text(slot.label)
                 .font(.callout)
                 .frame(width: 110, alignment: .leading)
             TextField("#RRGGBBAA", text: $text)
-                .borderedField()
+                .textFieldStyle(.roundedBorder)
                 .font(.system(.caption, design: .monospaced))
                 .onSubmit { commit() }
                 .onChange(of: text) { _, _ in commit() }

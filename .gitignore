@@ -1,0 +1,6 @@
+# Xcode 빌드 산출물
+build/
+DerivedData/
+*.xcarchive
+.DS_Store
+xcuserdata/

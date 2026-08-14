@@ -126,7 +126,7 @@ struct TutorialOverlay: View {
                 Button(index == tutorialSteps.count - 1 ? "시작하기" : "다음") {
                     if index == tutorialSteps.count - 1 { onFinish() } else { index += 1 }
                 }
-                .defaultActionShortcut()
+                .keyboardShortcut(.defaultAction)
             }
         }
         .padding(18)

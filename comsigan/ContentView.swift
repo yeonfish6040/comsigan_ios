@@ -7,9 +7,7 @@
 
 import Combine
 import SwiftUI
-#if canImport(WidgetKit)
 import WidgetKit
-#endif
 
 struct ContentView: View {
     // App Group에 저장해 위젯이 같은 값을 읽는다.
@@ -176,7 +174,7 @@ struct ContentView: View {
     private func publishSelection() {
         AppSettings.persist(grade: grade, klass: klass)
         AppSettings.persist(school: School(code: schoolCode, name: schoolName, region: ""))
-        reloadWidgets()
+        WidgetCenter.shared.reloadAllTimelines()
         #if os(iOS)
         // 애플워치는 App Group을 공유할 수 없어 선택만 따로 보낸다.
         WatchSettingsSync.shared.push()
@@ -192,7 +190,7 @@ struct ContentView: View {
             classCounts = document.classCounts
             timetable = try document.timetable(grade: grade, klass: klass)
             errorText = nil
-            reloadWidgets()
+            WidgetCenter.shared.reloadAllTimelines()
         } catch {
             errorText = error.localizedDescription
             if timetable?.grade != grade || timetable?.klass != klass { timetable = nil }

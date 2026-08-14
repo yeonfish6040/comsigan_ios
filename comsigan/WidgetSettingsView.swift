@@ -7,9 +7,7 @@
 //
 
 import SwiftUI
-#if canImport(WidgetKit)
 import WidgetKit
-#endif
 
 struct WidgetSettingsView: View {
     @State private var themeId = AppSettings.widgetThemeId ?? WidgetThemes.default.id
@@ -89,7 +87,7 @@ struct WidgetSettingsView: View {
             set: { newValue in
                 layoutIds[slot.rawValue] = newValue
                 AppSettings.setWidgetLayoutId(newValue, slot: slot.rawValue)
-                reloadWidgets()
+                WidgetCenter.shared.reloadAllTimelines()
             }
         )
     }
@@ -103,7 +101,7 @@ struct WidgetSettingsView: View {
     private func select(_ id: String) {
         themeId = id
         AppSettings.widgetThemeId = id
-        reloadWidgets()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 

@@ -30,7 +30,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "DA6E062B302D3A03000B03AE"
-               BuildableName = "comsigan.app"
+               BuildableName = "&#x110f;&#x1165;&#x11b7;&#x1109;&#x1175;&#x1100;&#x1161;&#x11ab;.app"
                BlueprintName = "comsigan"
                ReferencedContainer = "container:comsigan.xcodeproj">
             </BuildableReference>
@@ -85,7 +85,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "DA6E062B302D3A03000B03AE"
-            BuildableName = "comsigan.app"
+            BuildableName = "&#x110f;&#x1165;&#x11b7;&#x1109;&#x1175;&#x1100;&#x1161;&#x11ab;.app"
             BlueprintName = "comsigan"
             ReferencedContainer = "container:comsigan.xcodeproj">
          </BuildableReference>

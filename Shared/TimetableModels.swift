@@ -63,10 +63,29 @@ nonisolated struct Timetable: Codable, Hashable, Sendable {
     /// 학교 시간표가 마지막으로 갱신된 시각(자료244).
     var sourceUpdatedAt: String
     var fetchedAt: Date
+    /// 이 표가 담고 있는 주의 월요일(시작일). 예: "2026-08-24"
+    var weekStart: String = ""
+    /// 서버가 준 기간 표기. 예: "26-08-17 ~ 26-08-22"
+    var weekLabel: String = ""
 
     static let dayNames = ["월", "화", "수", "목", "금"]
 
     var maxPeriod: Int { max(periodCounts.max() ?? 0, 1) }
+
+    /// 한 칸이라도 수업이 들어 있는지. 방학 주간처럼 표가 통째로 비는 경우가 있다.
+    var hasAnyClass: Bool {
+        days.contains { $0.contains { !$0.isEmpty } }
+    }
+
+    /// 요일(월=0)에 해당하는 날짜. 시작일을 모르면 nil.
+    func date(forDay day: Int, calendar: Calendar = .current) -> Date? {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let monday = formatter.date(from: weekStart) else { return nil }
+        return calendar.date(byAdding: .day, value: day, to: monday)
+    }
 
     func cells(forDay day: Int) -> [TimetableCell] {
         guard days.indices.contains(day) else { return [] }

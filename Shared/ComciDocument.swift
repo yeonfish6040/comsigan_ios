@@ -38,6 +38,32 @@ nonisolated struct ComciDocument {
         return counts.indices.contains(grade) ? counts[grade] : 0
     }
 
+    // MARK: - 주차
+
+    /// 열람할 수 있는 주차 목록. 한 줄이 [r, "26-08-17 ~ 26-08-22"] 형태다.
+    var weeks: [ComciWeek] {
+        (root["일자자료"] as? [Any] ?? []).compactMap { row in
+            guard let fields = row as? [Any], fields.count >= 2 else { return nil }
+            let r = Self.numeric(fields[0])
+            guard r > 0 else { return nil }
+            return ComciWeek(r: r, label: fields[1] as? String ?? "")
+        }
+    }
+
+    /// 오늘이 속한 주차의 r.
+    var todayWeek: Int { Self.numeric(root["오늘r"], fallback: 1) }
+
+    /// 이 자료가 담고 있는 주의 월요일. 예: "2026-08-24"
+    var weekStartDate: String { root["시작일"] as? String ?? "" }
+
+    /// 이 자료가 어느 주차인지. 응답에 r이 없어서 시작일로 목록과 맞춰 본다.
+    /// (일자자료 라벨은 "26-08-24 ~ …"처럼 두 자리 연도로 시작한다.)
+    var week: ComciWeek? {
+        let start = String(weekStartDate.dropFirst(2))
+        guard !start.isEmpty else { return nil }
+        return weeks.first { $0.label.hasPrefix(start) }
+    }
+
     private var division: Int { Self.numeric(root["분리"], fallback: 100) }
     private var usesClassroom: Bool { Self.numeric(root["강의실"]) == 1 }
     private var usesChangeNotice: Bool { Self.numeric(root["변경알림"]) == 1 }
@@ -123,7 +149,9 @@ nonisolated struct ComciDocument {
             periodCounts: periodCounts,
             periodTimes: periodTimes,
             sourceUpdatedAt: sourceUpdatedAt,
-            fetchedAt: Date()
+            fetchedAt: Date(),
+            weekStart: weekStartDate,
+            weekLabel: week?.label ?? ""
         )
     }
 

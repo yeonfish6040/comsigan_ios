@@ -19,6 +19,14 @@ struct ContentView: View {
     private var schoolName = AppSettings.defaultSchool.name
 
     @State private var isSearchingSchool = false
+    /// 서버가 알려준 열람 가능한 주차 목록(일자자료)과 지금 보고 있는 주차.
+    /// 선택은 r 하나로만 들고 있어야 라벨이 채워질 때 화면이 다시 로드되지 않는다.
+    @State private var weeks: [ComciWeek] = []
+    @State private var selectedWeek = ComciWeek.first.r
+    @State private var todayWeek = 1
+    @State private var didPickWeek = false
+    /// 표가 밀려 들어올 방향. 다음 주로 넘기면 오른쪽에서 들어온다.
+    @State private var goingForward = true
     @State private var timetable: Timetable?
     @State private var classCounts: [Int] = []
     @State private var errorText: String?
@@ -26,6 +34,10 @@ struct ContentView: View {
     @State private var now = Date()
 
     private let ticker = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+
+    private var week: ComciWeek {
+        weeks.first { $0.r == selectedWeek } ?? ComciWeek(r: selectedWeek, label: "")
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -35,15 +47,29 @@ struct ContentView: View {
                     .foregroundStyle(.orange)
                     .font(.callout)
             }
-            if let timetable {
-                WeekGrid(timetable: timetable, now: now)
-            } else if isLoading {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                Text("시간표를 불러오지 못했습니다.")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // 주/학급을 바꿔도 이전 표를 그대로 두고 자리에서 갈아 끼운다.
+            // 비웠다 다시 그리면 화면이 깜박인다. 새 표는 넘긴 방향으로 밀려 들어온다.
+            ZStack {
+                if let timetable, timetable.hasAnyClass {
+                    // 창이 작아도 헤더가 잘리지 않게 표만 스크롤한다.
+                    ScrollView {
+                        // 다른 주를 볼 때는 '오늘'과 '현재 수업' 표시를 하지 않는다.
+                        WeekGrid(
+                            timetable: timetable,
+                            now: week.r == todayWeek ? now : nil,
+                            forward: goingForward
+                        )
+                    }
+                } else if isLoading {
+                    ProgressView()
+                } else {
+                    Text(emptyMessage)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped() // 밀려 들어오는 표가 헤더/푸터를 덮지 않게
             footer
         }
         .padding(20)
@@ -61,12 +87,17 @@ struct ContentView: View {
             publishSelection()
             Task { await load() }
         }
+        .onChange(of: selectedWeek) { _, _ in
+            Task { await load() }
+        }
         .sheet(isPresented: $isSearchingSchool) {
             SchoolSearchView { school in
                 schoolCode = school.code
                 schoolName = school.name
                 grade = 1
                 klass = 1
+                weeks = []
+                didPickWeek = false // 학교마다 열람 가능한 주가 다르다
                 publishSelection()
                 Task { await load(force: true) }
             }
@@ -80,6 +111,7 @@ struct ContentView: View {
             schoolButton
             gradePicker.frame(width: 110)
             classPicker.frame(width: 100)
+            weekStepper
             Spacer()
             refreshButton
         }
@@ -90,12 +122,63 @@ struct ContentView: View {
             HStack(spacing: 10) {
                 gradePicker
                 classPicker
+                weekStepper
                 Spacer()
                 refreshButton
             }
         }
         .labelsHidden()
         #endif
+    }
+
+    /// 주차 이동. 열람 페이지처럼 화살표로만 넘긴다.
+    /// 학교가 다음 주를 아직 올리지 않았으면 목록이 하나뿐이라 감춘다.
+    @ViewBuilder private var weekStepper: some View {
+        if weeks.count > 1 {
+            HStack(spacing: 6) {
+                Button { step(-1) } label: { Image(systemName: "chevron.left") }
+                    .disabled(!canStep(-1))
+                // 가운데 버튼은 오늘이 낀 주로 되돌아간다.
+                Button("이번 주") {
+                    goingForward = todayWeek > selectedWeek
+                    selectedWeek = todayWeek
+                }
+                .disabled(selectedWeek == todayWeek)
+                Button { step(1) } label: { Image(systemName: "chevron.right") }
+                    .disabled(!canStep(1))
+                Text(weekLabel)
+                    .font(.caption)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+
+    /// 연도를 뗀 기간 표기. "26-08-24 ~ 26-08-29" → "08-24 ~ 08-29"
+    private var weekLabel: String {
+        week.label
+            .split(separator: "~")
+            .map { $0.trimmingCharacters(in: .whitespaces).split(separator: "-").dropFirst().joined(separator: "-") }
+            .joined(separator: " ~ ")
+    }
+
+    private func canStep(_ delta: Int) -> Bool {
+        weeks.contains { $0.r == selectedWeek + delta }
+    }
+
+    private func step(_ delta: Int) {
+        guard canStep(delta) else { return }
+        goingForward = delta > 0
+        selectedWeek += delta
+    }
+
+    private var emptyMessage: String {
+        if errorText != nil { return "시간표를 불러오지 못했습니다." }
+        return week.r == todayWeek
+            ? "이번 주에는 등록된 수업이 없습니다."
+            : "\(weekLabel) 시간표가 아직 올라오지 않았습니다."
     }
 
     private var schoolButton: some View {
@@ -186,11 +269,21 @@ struct ContentView: View {
         publishSelection()
         defer { isLoading = false }
         do {
-            let document = try await ComciService.document(school: schoolCode, forceRefresh: force)
+            let document = try await ComciService.document(school: schoolCode, week: week, forceRefresh: force)
             classCounts = document.classCounts
-            timetable = try document.timetable(grade: grade, klass: klass)
+            // 고를 수 있는 주차는 서버가 응답마다 알려준다.
+            weeks = document.weeks
+            todayWeek = document.todayWeek
+            // 목록이 지난 주부터 시작할 수도 있어서 처음 한 번은 오늘이 낀 주로 맞춘다.
+            if !didPickWeek {
+                didPickWeek = true
+                selectedWeek = document.todayWeek
+            }
+            let loaded = try document.timetable(grade: grade, klass: klass)
+            withAnimation(.easeOut(duration: 0.18)) { timetable = loaded }
             errorText = nil
-            WidgetCenter.shared.reloadAllTimelines()
+            // 위젯은 오늘이 낀 주만 보여주므로 그 주를 받아왔을 때만 다시 그린다.
+            if week.r == todayWeek { WidgetCenter.shared.reloadAllTimelines() }
         } catch {
             errorText = error.localizedDescription
             if timetable?.grade != grade || timetable?.klass != klass { timetable = nil }
@@ -200,10 +293,20 @@ struct ContentView: View {
 
 private struct WeekGrid: View {
     let timetable: Timetable
-    let now: Date
+    /// 다음 주를 볼 때는 nil이라 오늘/현재 수업 표시가 꺼진다.
+    let now: Date?
+    /// 칸 내용이 밀려 들어올 방향.
+    let forward: Bool
 
-    private var today: Int? { Timetable.dayIndex(for: now) }
-    private var currentPeriod: Int? { timetable.currentPeriod(at: now) }
+    private var today: Int? { now.flatMap { Timetable.dayIndex(for: $0) } }
+    private var currentPeriod: Int? { now.flatMap { timetable.currentPeriod(at: $0) } }
+
+    /// 열람 페이지처럼 요일 옆에 날짜를 붙인다. 예: "월(24)"
+    private func dayTitle(_ day: Int) -> String {
+        let name = Timetable.dayNames[day]
+        guard let date = timetable.date(forDay: day) else { return name }
+        return "\(name)(\(Calendar.current.component(.day, from: date)))"
+    }
 
     var body: some View {
         Grid(horizontalSpacing: 6, verticalSpacing: 6) {
@@ -211,7 +314,7 @@ private struct WeekGrid: View {
                 Text("")
                     .frame(width: 46)
                 ForEach(0..<Timetable.dayNames.count, id: \.self) { day in
-                    Text(Timetable.dayNames[day])
+                    Text(dayTitle(day))
                         .font(.subheadline.bold())
                         .foregroundStyle(day == today ? Color.accentColor : .secondary)
                         .frame(maxWidth: .infinity)
@@ -233,7 +336,8 @@ private struct WeekGrid: View {
                     ForEach(0..<Timetable.dayNames.count, id: \.self) { day in
                         CellView(
                             cell: timetable.cell(day: day, period: period),
-                            isNow: day == today && period == currentPeriod
+                            isNow: day == today && period == currentPeriod,
+                            forward: forward
                         )
                     }
                 }
@@ -245,26 +349,20 @@ private struct WeekGrid: View {
 private struct CellView: View {
     let cell: TimetableCell
     let isNow: Bool
+    let forward: Bool
 
     var body: some View {
+        // 칸(배경·테두리)은 가만히 있고 글자만 제자리에서 갈린다.
         VStack(spacing: 2) {
             if cell.isEmpty {
-                Text("—").foregroundStyle(.quaternary)
+                line("—", font: .body, style: AnyShapeStyle(.quaternary))
             } else {
-                Text(cell.displaySubject)
-                    .font(.callout.weight(.medium))
-                    .lineLimit(1)
+                line(cell.displaySubject, font: .callout.weight(.medium), style: AnyShapeStyle(.primary))
                 if !cell.teacher.isEmpty {
-                    Text(cell.teacher)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    line(cell.teacher, font: .caption2, style: AnyShapeStyle(.secondary))
                 }
                 if !cell.room.isEmpty {
-                    Text(cell.room)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
+                    line(cell.room, font: .caption2, style: AnyShapeStyle(.tertiary))
                 }
             }
         }
@@ -277,6 +375,64 @@ private struct CellView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(Color.accentColor, lineWidth: isNow ? 2 : 0)
+        }
+        .clipped() // 밀려 나가는 글자가 옆 칸을 침범하지 않게
+    }
+
+    private func line(_ text: String, font: Font, style: AnyShapeStyle) -> some View {
+        SwapText(text: text, font: font, style: style, forward: forward)
+    }
+}
+
+/// 글자 한 줄. 내용이 바뀌면 옛 글자가 옆으로 빠지고 새 글자가 반대쪽에서 들어온다.
+/// Grid 칸 안에서는 `.transition`이 먹지 않아 오프셋을 직접 움직인다.
+private struct SwapText: View {
+    let text: String
+    let font: Font
+    let style: AnyShapeStyle
+    /// 다음 주로 넘길 때 true. 옛 글자가 왼쪽으로 나가고 새 글자가 오른쪽에서 들어온다.
+    let forward: Bool
+
+    @State private var shown: String
+    @State private var offset: CGFloat = 0
+    @State private var opacity: Double = 1
+
+    init(text: String, font: Font, style: AnyShapeStyle, forward: Bool) {
+        self.text = text
+        self.font = font
+        self.style = style
+        self.forward = forward
+        _shown = State(initialValue: text)
+    }
+
+    private static let outDuration = 0.12
+    private static let inDuration = 0.16
+    private static let distance: CGFloat = 14
+
+    var body: some View {
+        Text(shown)
+            .font(font)
+            .foregroundStyle(style)
+            .lineLimit(1)
+            .offset(x: offset)
+            .opacity(opacity)
+            .onChange(of: text) { _, next in swap(to: next) }
+    }
+
+    private func swap(to next: String) {
+        let exit: CGFloat = forward ? -Self.distance : Self.distance
+        withAnimation(.easeIn(duration: Self.outDuration)) {
+            offset = exit
+            opacity = 0
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(Self.outDuration))
+            shown = next
+            offset = -exit // 반대쪽에서 들어온다
+            withAnimation(.easeOut(duration: Self.inDuration)) {
+                offset = 0
+                opacity = 1
+            }
         }
     }
 }

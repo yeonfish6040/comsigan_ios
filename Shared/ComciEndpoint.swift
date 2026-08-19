@@ -47,6 +47,19 @@ nonisolated struct ComciEndpoint: Codable, Sendable, Equatable {
     }
 }
 
+/// 열람할 주차. 요청 끝자리 `r`이 이 값이고, 고를 수 있는 주차 목록은
+/// 응답의 `일자자료`가 알려준다(열람 페이지 일자설정하기와 동일).
+nonisolated struct ComciWeek: Hashable, Sendable, Identifiable {
+    var r: Int
+    /// 서버가 준 기간 표기. 예: "26-08-17 ~ 26-08-22"
+    var label: String
+
+    var id: Int { r }
+
+    /// 주차를 모르는 상태에서 처음 부를 때 쓰는 값(열람 페이지도 r=1로 시작한다).
+    static let first = ComciWeek(r: 1, label: "")
+}
+
 nonisolated struct School: Codable, Sendable, Hashable, Identifiable {
     var code: Int
     var name: String

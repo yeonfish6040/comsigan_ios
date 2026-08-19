@@ -45,19 +45,29 @@ nonisolated enum ComciService {
 
     // MARK: - 시간표
 
-    static func timetable(school: Int, grade: Int, klass: Int, forceRefresh: Bool = false) async throws -> Timetable {
-        let document = try await document(school: school, forceRefresh: forceRefresh)
+    static func timetable(
+        school: Int,
+        grade: Int,
+        klass: Int,
+        week: ComciWeek = .first,
+        forceRefresh: Bool = false
+    ) async throws -> Timetable {
+        let document = try await document(school: school, week: week, forceRefresh: forceRefresh)
         return try document.timetable(grade: grade, klass: klass)
     }
 
-    static func document(school: Int, forceRefresh: Bool = false) async throws -> ComciDocument {
-        if !forceRefresh, let cached = cachedData(school: school) {
+    static func document(
+        school: Int,
+        week: ComciWeek = .first,
+        forceRefresh: Bool = false
+    ) async throws -> ComciDocument {
+        if !forceRefresh, let cached = cachedData(school: school, week: week) {
             return try ComciDocument(data: cached)
         }
 
         do {
             let endpoint = await endpoint()
-            guard let url = endpoint.timetableURL(schoolCode: school) else {
+            guard let url = endpoint.timetableURL(schoolCode: school, week: week.r) else {
                 throw ComciError.malformedResponse
             }
             var request = URLRequest(url: url)
@@ -69,11 +79,11 @@ nonisolated enum ComciService {
             }
             let clean = sanitizedJSON(data)
             let document = try ComciDocument(data: clean) // 파싱에 성공한 것만 캐시한다
-            store(clean, school: school)
+            store(clean, school: school, week: week)
             return document
         } catch {
             // 네트워크가 끊겼으면 기한이 지난 캐시라도 쓴다.
-            if let stale = cachedData(school: school, ignoringAge: true) {
+            if let stale = cachedData(school: school, week: week, ignoringAge: true) {
                 return try ComciDocument(data: stale)
             }
             throw error
@@ -113,8 +123,9 @@ nonisolated enum ComciService {
     // MARK: - 디스크 캐시
 
     /// App Group 컨테이너에 두어 앱이 받아온 자료를 위젯도 그대로 쓴다.
-    private static func cacheURL(school: Int) -> URL? {
-        let name = "comci-\(school).json"
+    private static func cacheURL(school: Int, week: ComciWeek) -> URL? {
+        // r=1 캐시는 기존 파일명을 유지해 위젯이 쓰던 자료를 그대로 이어 쓴다.
+        let name = week.r == 1 ? "comci-\(school).json" : "comci-\(school)-r\(week.r).json"
         if let shared = AppSettings.containerURL {
             let directory = shared.appendingPathComponent("Caches", isDirectory: true)
             try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -126,16 +137,16 @@ nonisolated enum ComciService {
         return directory.appendingPathComponent(name)
     }
 
-    private static func cachedData(school: Int, ignoringAge: Bool = false) -> Data? {
-        guard let url = cacheURL(school: school),
+    private static func cachedData(school: Int, week: ComciWeek, ignoringAge: Bool = false) -> Data? {
+        guard let url = cacheURL(school: school, week: week),
               let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
               let modified = attributes[.modificationDate] as? Date else { return nil }
         if !ignoringAge, Date().timeIntervalSince(modified) > cacheLifetime { return nil }
         return try? Data(contentsOf: url)
     }
 
-    private static func store(_ data: Data, school: Int) {
-        guard let url = cacheURL(school: school) else { return }
+    private static func store(_ data: Data, school: Int, week: ComciWeek) {
+        guard let url = cacheURL(school: school, week: week) else { return }
         try? data.write(to: url, options: .atomic)
     }
 }

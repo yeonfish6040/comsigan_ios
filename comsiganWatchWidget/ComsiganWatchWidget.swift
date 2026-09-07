@@ -11,6 +11,8 @@ import WidgetKit
 struct WatchEntry: TimelineEntry {
     let date: Date
     let timetable: Timetable?
+    /// 이번 주에 남은 수업이 없을 때 이어 보여줄 다음 주 표.
+    var nextWeekTimetable: Timetable? = nil
     let grade: Int
     let klass: Int
 }
@@ -34,7 +36,13 @@ struct WatchProvider: TimelineProvider {
             for step in 1...60 {
                 let date = first.date.addingTimeInterval(Double(step) * 30)
                 entries.append(
-                    WatchEntry(date: date, timetable: first.timetable, grade: first.grade, klass: first.klass)
+                    WatchEntry(
+                        date: date,
+                        timetable: first.timetable,
+                        nextWeekTimetable: first.nextWeekTimetable,
+                        grade: first.grade,
+                        klass: first.klass
+                    )
                 )
             }
 
@@ -45,10 +53,16 @@ struct WatchProvider: TimelineProvider {
     private func entry() async -> WatchEntry {
         let grade = AppSettings.grade
         let klass = AppSettings.klass
-        let timetable = try? await ComciService.timetable(
+        let pair = try? await ComciService.weekPair(
             school: AppSettings.school.code, grade: grade, klass: klass
         )
-        return WatchEntry(date: Date(), timetable: timetable, grade: grade, klass: klass)
+        return WatchEntry(
+            date: Date(),
+            timetable: pair?.current,
+            nextWeekTimetable: pair?.next,
+            grade: grade,
+            klass: klass
+        )
     }
 }
 
@@ -56,20 +70,26 @@ struct WatchComplicationView: View {
     @Environment(\.widgetFamily) private var family
     var entry: WatchEntry
 
-    private var focus: (period: Int, cell: TimetableCell, isNow: Bool)? {
+    private var segment: DaySegment {
+        entry.timetable?.segment(at: entry.date) ?? DaySegment(phase: .done)
+    }
+
+    private var focus: (period: Int, cell: TimetableCell)? {
         guard let timetable = entry.timetable,
-              let day = Timetable.dayIndex(for: entry.date) else { return nil }
-        let current = timetable.currentPeriod(at: entry.date)
-        guard let period = current ?? timetable.nextPeriod(at: entry.date) else { return nil }
-        return (period, timetable.cell(day: day, period: period), current != nil)
+              let day = Timetable.dayIndex(for: entry.date),
+              let period = segment.period, segment.phase != .done else { return nil }
+        return (period, timetable.cell(day: day, period: period))
     }
 
     var body: some View {
         switch family {
         case .accessoryCircular:
             VStack(spacing: 0) {
-                Text(focus.map { "\($0.period)" } ?? "-")
+                // 쉬는시간·점심에는 교시 대신 그걸 알려 주고, 과목은 곧 시작할 수업이다.
+                Text(circularCaption)
                     .font(.caption2)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
                 Text(focus?.cell.displaySubject ?? "끝")
                     .font(.system(size: 13, weight: .bold))
                     .minimumScaleFactor(0.5)
@@ -83,7 +103,7 @@ struct WatchComplicationView: View {
 
         default: // accessoryRectangular
             VStack(alignment: .leading, spacing: 1) {
-                Text("\(entry.grade)-\(entry.klass) · \(focus.map { $0.isNow ? "지금 \($0.period)교시" : "다음 \($0.period)교시" } ?? "오늘 수업 끝")")
+                Text("\(entry.grade)-\(entry.klass) · \(rectangularCaption)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Text(focus?.cell.displaySubject ?? nextDayText)
@@ -98,13 +118,34 @@ struct WatchComplicationView: View {
         }
     }
 
+    /// 원형은 자리가 좁아 "쉬는" / "점심" / "3교시"까지만.
+    private var circularCaption: String {
+        switch segment.phase {
+        case .shortBreak: return "쉬는"
+        case .lunch: return "점심"
+        default: return focus.map { "\($0.period)" } ?? "-"
+        }
+    }
+
+    private var rectangularCaption: String {
+        guard let headline = segment.headline else { return "오늘 수업 끝" }
+        return [headline, segment.nextLabel].compactMap { $0 }.joined(separator: " · ")
+    }
+
     private var inlineText: String {
         guard let focus else { return "오늘 수업 끝" }
-        return "\(focus.period)교시 \(focus.cell.displaySubject)"
+        let prefix = segment.isBreak ? (segment.phase == .lunch ? "점심, 다음" : "쉬는시간, 다음") : ""
+        return "\(prefix.isEmpty ? "" : prefix + " ")\(focus.period)교시 \(focus.cell.displaySubject)"
     }
 
     private var nextDayText: String {
-        guard let next = entry.timetable?.upcoming(at: entry.date, afterPeriod: 99, limit: 1).first else {
+        guard let next = Timetable.upcoming(
+            current: entry.timetable,
+            next: entry.nextWeekTimetable,
+            at: entry.date,
+            afterPeriod: .max - 1,
+            limit: 1
+        ).first else {
             return "수업 없음"
         }
         return "\(next.label) \(next.cell.displaySubject)"

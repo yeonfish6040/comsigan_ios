@@ -45,15 +45,37 @@ nonisolated enum ComciService {
 
     // MARK: - 시간표
 
-    static func timetable(
+    /// 오늘이 낀 주의 표와, 필요하면 이어지는 다음 주 표.
+    /// 금요일 방과 후처럼 이번 주에 남은 수업이 `lookahead`보다 적을 때만 다음 주를 더 받아 온다.
+    static func weekPair(
         school: Int,
         grade: Int,
         klass: Int,
-        week: ComciWeek = .first,
+        at date: Date = Date(),
+        lookahead: Int = 3,
         forceRefresh: Bool = false
-    ) async throws -> Timetable {
-        let document = try await document(school: school, week: week, forceRefresh: forceRefresh)
-        return try document.timetable(grade: grade, klass: klass)
+    ) async throws -> (current: Timetable, next: Timetable?) {
+        // r=1이 오늘이 낀 주라는 보장이 없다. 응답의 '오늘r'을 보고 맞춘다.
+        let probe = try await document(school: school, week: .first, forceRefresh: forceRefresh)
+        let todayWeek = probe.todayWeek
+        let currentDocument = todayWeek == ComciWeek.first.r
+            ? probe
+            : try await document(school: school, week: ComciWeek(r: todayWeek, label: ""), forceRefresh: forceRefresh)
+        let current = try currentDocument.timetable(grade: grade, klass: klass)
+
+        let after = current.focusPeriod(at: date) ?? .max - 1
+        if current.upcoming(at: date, afterPeriod: after, limit: lookahead).count >= lookahead {
+            return (current, nil)
+        }
+
+        // 학교가 다음 주를 아직 올리지 않았으면 목록에 없다.
+        guard currentDocument.weeks.contains(where: { $0.r == todayWeek + 1 }),
+              let nextDocument = try? await document(school: school, week: ComciWeek(r: todayWeek + 1, label: "")),
+              let next = try? nextDocument.timetable(grade: grade, klass: klass),
+              next.hasAnyClass else {
+            return (current, nil)
+        }
+        return (current, next)
     }
 
     static func document(

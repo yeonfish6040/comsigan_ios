@@ -13,6 +13,8 @@ nonisolated struct WidgetRenderScope {
     var palette: WidgetPalette
     /// 시간표. 아직 못 받아왔으면 nil.
     var timetable: Timetable?
+    /// 다음 주 표. 이번 주에 남은 수업이 없을 때만 쓴다.
+    var nextWeekTimetable: Timetable?
     var school: School
     var grade: Int
     var klass: Int
@@ -21,14 +23,22 @@ nonisolated struct WidgetRenderScope {
     var now: Date = Date()
 
     var today: Int? { Timetable.dayIndex(for: now) }
+    /// 지금이 수업인지 쉬는시간인지 점심인지.
+    var segment: DaySegment { timetable?.segment(at: now) ?? DaySegment(phase: .done) }
     var currentPeriod: Int? { timetable?.currentPeriod(at: now) }
     var nextPeriod: Int? { timetable?.nextPeriod(at: now) }
-    /// 지금(없으면 다음) 교시.
+    /// 지금(없으면 다음) 교시. 쉬는시간이면 곧 시작할 교시를 가리킨다.
     var focusPeriod: Int? { currentPeriod ?? nextPeriod }
 
-    /// 오늘 일과가 끝났으면 오늘은 건너뛰고 다음 등교일에서 찾는다.
+    /// 오늘 일과가 끝났으면 다음 등교일로, 이번 주가 끝났으면 다음 주로 넘어간다.
     func upcoming(limit: Int) -> [UpcomingClass] {
-        timetable?.upcoming(at: now, afterPeriod: focusPeriod ?? 99, limit: limit) ?? []
+        Timetable.upcoming(
+            current: timetable,
+            next: nextWeekTimetable,
+            at: now,
+            afterPeriod: focusPeriod ?? .max - 1,
+            limit: limit
+        )
     }
 }
 
@@ -147,22 +157,22 @@ nonisolated struct NowNextLayout: WidgetLayout {
         AnyView(
             WidgetSurface(scope: scope) { timetable in
                 let palette = scope.palette
+                let segment = scope.segment
                 let focus = scope.focusPeriod
                 let cell = (scope.today != nil && focus != nil)
                     ? timetable.cell(day: scope.today!, period: focus!)
                     : nil
 
                 VStack(alignment: .leading, spacing: 2) {
-                    if let cell, let focus {
+                    if let cell, let focus, let headline = segment.headline {
                         HStack(spacing: 4) {
-                            Text(scope.currentPeriod == nil ? "다음 \(focus)교시" : "지금 \(focus)교시")
+                            Text(headline)
                                 .font(.caption2.weight(.medium))
                                 .foregroundStyle(palette.accent)
-                            if let time = timetable.periodTime(focus) {
-                                Text(time.label)
-                                    .font(.caption2)
-                                    .foregroundStyle(palette.textMuted)
-                            }
+                            // 쉬는시간·점심에는 큰 글씨가 '다음' 수업이라는 걸 알려 준다.
+                            Text(segment.nextLabel ?? timetable.periodTime(focus)?.label ?? "")
+                                .font(.caption2)
+                                .foregroundStyle(palette.textMuted)
                         }
                         Text(cell.isEmpty ? "수업 없음" : cell.displaySubject)
                             .font(.title2.bold())
@@ -382,27 +392,25 @@ nonisolated struct FocusLayout: WidgetLayout {
     @MainActor
     func body(_ scope: WidgetRenderScope) -> AnyView {
         let palette = scope.palette
+        let segment = scope.segment
         let focus = scope.focusPeriod
         let cell = (scope.timetable != nil && scope.today != nil && focus != nil)
             ? scope.timetable!.cell(day: scope.today!, period: focus!)
             : nil
+        // 일과가 끝났으면 다음 등교일(주가 넘어가면 다음 주 월요일)을 대신 보여준다.
+        let ahead = (cell == nil || segment.headline == nil) ? scope.upcoming(limit: 1).first : nil
 
         return AnyView(
             VStack(spacing: 2) {
-                if let cell, let focus {
-                    Text(scope.currentPeriod == nil ? "다음 \(focus)교시" : "\(focus)교시")
-                        .font(.caption)
-                        .foregroundStyle(palette.accent)
-                    Text(cell.displaySubject.isEmpty ? "공강" : cell.displaySubject)
-                        .font(.system(size: 34, weight: .bold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.4)
-                        .foregroundStyle(cell.isChanged ? palette.changed : palette.text)
-                    if !cell.teacher.isEmpty {
-                        Text(cell.teacher)
-                            .font(.callout)
-                            .foregroundStyle(palette.textMuted)
-                    }
+                if let cell, let headline = segment.headline {
+                    subject(
+                        caption: [headline, segment.nextLabel].compactMap { $0 }.joined(separator: " · "),
+                        cell: cell,
+                        fallback: "공강",
+                        palette: palette
+                    )
+                } else if let ahead {
+                    subject(caption: ahead.label, cell: ahead.cell, fallback: "공강", palette: palette)
                 } else {
                     Text(scope.status ?? "수업 없음")
                         .font(.headline)
@@ -411,5 +419,24 @@ nonisolated struct FocusLayout: WidgetLayout {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         )
+    }
+
+    @MainActor @ViewBuilder
+    private func subject(caption: String, cell: TimetableCell, fallback: String, palette: WidgetPalette) -> some View {
+        Text(caption)
+            .font(.caption)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .foregroundStyle(palette.accent)
+        Text(cell.displaySubject.isEmpty ? fallback : cell.displaySubject)
+            .font(.system(size: 34, weight: .bold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.4)
+            .foregroundStyle(cell.isChanged ? palette.changed : palette.text)
+        if !cell.teacher.isEmpty {
+            Text(cell.teacher)
+                .font(.callout)
+                .foregroundStyle(palette.textMuted)
+        }
     }
 }

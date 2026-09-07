@@ -10,6 +10,8 @@ import WidgetKit
 
 struct WatchTimetableView: View {
     @State private var timetable: Timetable?
+    /// 이번 주에 남은 수업이 없을 때 이어 보여줄 다음 주 표.
+    @State private var nextWeekTimetable: Timetable?
     @State private var errorText: String?
     @State private var isLoading = false
     @State private var now = Date()
@@ -51,14 +53,14 @@ struct WatchTimetableView: View {
     @ViewBuilder
     private func nowSection(_ timetable: Timetable) -> some View {
         let day = Timetable.dayIndex(for: now)
-        let current = timetable.currentPeriod(at: now)
-        let focus = current ?? timetable.nextPeriod(at: now)
+        let segment = timetable.segment(at: now)
 
         Section {
-            if let day, let focus {
+            if let day, let focus = segment.period, let headline = segment.headline {
                 let cell = timetable.cell(day: day, period: focus)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(current == nil ? "다음 \(focus)교시" : "지금 \(focus)교시")
+                    // 쉬는시간·점심에는 "지금 쉬는시간 · 다음 5교시"처럼 두 줄 정보를 한 줄에 담는다.
+                    Text([headline, segment.nextLabel].compactMap { $0 }.joined(separator: " · "))
                         .font(.caption2)
                         .foregroundStyle(.orange)
                     Text(cell.isEmpty ? "수업 없음" : cell.displaySubject)
@@ -70,7 +72,13 @@ struct WatchTimetableView: View {
             } else {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("오늘 수업 끝").font(.headline)
-                    if let next = timetable.upcoming(at: now, afterPeriod: 99, limit: 1).first {
+                    if let next = Timetable.upcoming(
+                        current: timetable,
+                        next: nextWeekTimetable,
+                        at: now,
+                        afterPeriod: .max - 1,
+                        limit: 1
+                    ).first {
                         Text("\(next.label) \(next.cell.displaySubject)")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -116,12 +124,14 @@ struct WatchTimetableView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            timetable = try await ComciService.timetable(
+            let pair = try await ComciService.weekPair(
                 school: AppSettings.school.code,
                 grade: AppSettings.grade,
                 klass: AppSettings.klass,
                 forceRefresh: force
             )
+            timetable = pair.current
+            nextWeekTimetable = pair.next
             errorText = nil
             // 새로 받은 시간표를 컴플리케이션에도 반영한다.
             WidgetCenter.shared.reloadAllTimelines()

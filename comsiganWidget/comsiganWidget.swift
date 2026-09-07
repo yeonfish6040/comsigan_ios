@@ -14,6 +14,8 @@ struct TimetableEntry: TimelineEntry {
     let date: Date
     let configuration: ConfigurationAppIntent
     let timetable: Timetable?
+    /// 이번 주에 남은 수업이 없을 때 이어 보여줄 다음 주 표.
+    var nextWeekTimetable: Timetable? = nil
     let school: School
     let grade: Int
     let klass: Int
@@ -50,6 +52,7 @@ struct TimetableProvider: AppIntentTimelineProvider {
                     date: date,
                     configuration: configuration,
                     timetable: first.timetable,
+                    nextWeekTimetable: first.nextWeekTimetable,
                     school: first.school,
                     grade: first.grade,
                     klass: first.klass,
@@ -67,15 +70,16 @@ struct TimetableProvider: AppIntentTimelineProvider {
         let grade = configuration.resolvedGrade
         let klass = configuration.resolvedClass
 
-        let timetable = try? await ComciService.timetable(school: school.code, grade: grade, klass: klass)
+        let pair = try? await ComciService.weekPair(school: school.code, grade: grade, klass: klass, at: date)
         return TimetableEntry(
             date: date,
             configuration: configuration,
-            timetable: timetable,
+            timetable: pair?.current,
+            nextWeekTimetable: pair?.next,
             school: school,
             grade: grade,
             klass: klass,
-            status: timetable == nil ? "시간표를 불러오지 못했습니다" : nil
+            status: pair == nil ? "시간표를 불러오지 못했습니다" : nil
         )
     }
 }
@@ -107,6 +111,7 @@ struct comsiganWidgetEntryView: View {
         let scope = WidgetRenderScope(
             palette: palette,
             timetable: entry.timetable,
+            nextWeekTimetable: entry.nextWeekTimetable,
             school: entry.school,
             grade: entry.grade,
             klass: entry.klass,

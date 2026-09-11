@@ -9,6 +9,8 @@ import SwiftUI
 private let privacyPolicyURL = URL(string: "https://sneaky-parrot-647.notion.site/3bb874aebd068010b5f4e988af1a677f")!
 
 struct AboutView: View {
+    @State private var isEditingSchedule = false
+
     private var version: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
     }
@@ -34,6 +36,27 @@ struct AboutView: View {
 
             Divider().padding(.vertical, 10)
 
+            Button {
+                isEditingSchedule = true
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("일과시간 수정")
+                        Text("교시 시작 시각이 실제와 다를 때")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Divider().padding(.vertical, 10)
+
             Text("현재 학급").font(.caption.bold())
             Text("\(AppSettings.school.name) \(AppSettings.grade)학년 \(AppSettings.klass)반")
                 .font(.callout)
@@ -47,5 +70,8 @@ struct AboutView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .sheet(isPresented: $isEditingSchedule) {
+            ScheduleEditorView { isEditingSchedule = false }
+        }
     }
 }

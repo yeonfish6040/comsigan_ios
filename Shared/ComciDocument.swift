@@ -70,7 +70,13 @@ nonisolated struct ComciDocument {
     private var teachers: [Any] { root["자료446"] as? [Any] ?? [] }
     private var subjects: [Any] { root["자료492"] as? [Any] ?? [] }
 
+    /// 설정에서 고친 값(없으면 기본 보정값)이 있으면 그걸 쓰고, 없으면 서버 자료를 그대로 쓴다.
     var periodTimes: [PeriodTime] {
+        AppSettings.resolvedPeriodTimes(school: AppSettings.school.code, server: serverPeriodTimes)
+    }
+
+    /// 학교가 컴시간에 올려 둔 원본 일과시간. 설정 화면에서 "서버 값으로 되돌리기"에 쓴다.
+    var serverPeriodTimes: [PeriodTime] {
         let raw = root["일과시간"] as? [Any] ?? []
         return raw.enumerated().compactMap { index, value in
             guard let text = value as? String,

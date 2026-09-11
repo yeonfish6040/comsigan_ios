@@ -24,6 +24,7 @@ final class WatchSettingsSync: NSObject, WCSessionDelegate, @unchecked Sendable 
         static let schoolName = "schoolName"
         static let grade = "grade"
         static let klass = "klass"
+        static let periodTimes = "periodTimes"
     }
 
     func activate() {
@@ -46,12 +47,17 @@ final class WatchSettingsSync: NSObject, WCSessionDelegate, @unchecked Sendable 
         }
 
         let school = AppSettings.school
-        let payload: [String: Any] = [
+        var payload: [String: Any] = [
             Key.schoolCode: school.code,
             Key.schoolName: school.name,
             Key.grade: AppSettings.grade,
             Key.klass: AppSettings.klass,
         ]
+        // 일과시간 보정도 같이 넘겨야 워치가 같은 시각으로 "지금 몇 교시"를 판단한다.
+        if let times = AppSettings.periodTimes(school: school.code),
+           let encoded = try? JSONEncoder().encode(times) {
+            payload[Key.periodTimes] = encoded
+        }
         try? session.updateApplicationContext(payload)
     }
 
@@ -64,6 +70,10 @@ final class WatchSettingsSync: NSObject, WCSessionDelegate, @unchecked Sendable 
             grade: context[Key.grade] as? Int ?? AppSettings.grade,
             klass: context[Key.klass] as? Int ?? AppSettings.klass
         )
+        // 보정이 지워졌으면 워치에서도 지워야 다시 서버 자료를 따른다.
+        let times = (context[Key.periodTimes] as? Data)
+            .flatMap { try? JSONDecoder().decode([PeriodTime].self, from: $0) }
+        AppSettings.setPeriodTimes(times, school: code)
         NotificationCenter.default.post(name: .watchSettingsChanged, object: nil)
         // 설정이 바뀌면 컴플리케이션(위젯)도 다시 그리게 한다.
         #if canImport(WidgetKit)

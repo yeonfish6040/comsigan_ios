@@ -24,6 +24,50 @@ nonisolated enum AppSettings {
         static let widgetLayoutPrefix = "widgetLayout_"
         static let customPalettes = "customPalettes"
         static let tutorialDone = "tutorialDone"
+        static let periodTimesPrefix = "periodTimes_"
+    }
+
+    // MARK: 일과시간
+
+    /// 학교가 컴시간에 올려 둔 일과시간이 실제 운영과 다를 때 쓰는 보정값. 학교마다 따로 둔다.
+    /// 설정에서 고친 값이 있으면 그게 서버 자료보다 우선한다.
+    static func periodTimes(school: Int) -> [PeriodTime]? {
+        guard let data = defaults.data(forKey: Key.periodTimesPrefix + String(school)),
+              let decoded = try? JSONDecoder().decode([PeriodTime].self, from: data),
+              !decoded.isEmpty else { return nil }
+        return decoded.sorted { $0.period < $1.period }
+    }
+
+    /// nil이나 빈 배열을 넣으면 보정을 지우고 다시 서버 자료를 따른다.
+    static func setPeriodTimes(_ times: [PeriodTime]?, school: Int) {
+        let key = Key.periodTimesPrefix + String(school)
+        guard let times, !times.isEmpty, let data = try? JSONEncoder().encode(times) else {
+            defaults.removeObject(forKey: key)
+            return
+        }
+        defaults.set(data, forKey: key)
+    }
+
+    /// 컴시간 자료가 실제와 어긋난다고 확인된 학교의 기본 보정값.
+    /// 사용자가 설정에서 고치면 그 값이 이것보다 우선한다.
+    static let builtInPeriodTimes: [Int: [PeriodTime]] = [
+        // 한국디지털미디어고 — 컴시간에는 점심 이후가 :50 시작으로 올라와 있지만
+        // 실제로는 :40에 시작한다(50분 수업 + 10분 쉬는시간).
+        29175: [
+            PeriodTime(period: 1, hour: 9, minute: 0),
+            PeriodTime(period: 2, hour: 10, minute: 0),
+            PeriodTime(period: 3, hour: 11, minute: 0),
+            PeriodTime(period: 4, hour: 12, minute: 0),
+            PeriodTime(period: 5, hour: 13, minute: 40),
+            PeriodTime(period: 6, hour: 14, minute: 40),
+            PeriodTime(period: 7, hour: 15, minute: 40),
+            PeriodTime(period: 8, hour: 16, minute: 40),
+        ],
+    ]
+
+    /// 서버 자료 위에 보정값을 얹은 최종 일과시간.
+    static func resolvedPeriodTimes(school: Int, server: [PeriodTime]) -> [PeriodTime] {
+        periodTimes(school: school) ?? builtInPeriodTimes[school] ?? server
     }
 
     // MARK: 위젯 꾸미기

@@ -38,8 +38,11 @@ nonisolated enum AppSettings {
         return decoded.sorted { $0.period < $1.period }
     }
 
-    /// nil이나 빈 배열을 넣으면 보정을 지우고 다시 서버 자료를 따른다.
+    /// nil이나 빈 배열을 넣으면 사용자 보정을 지우고 기본 보정값 또는 서버 자료를 따른다.
     static func setPeriodTimes(_ times: [PeriodTime]?, school: Int) {
+        defer {
+            NotificationCenter.default.post(name: .periodTimesChanged, object: school)
+        }
         let key = Key.periodTimesPrefix + String(school)
         guard let times, !times.isEmpty, let data = try? JSONEncoder().encode(times) else {
             defaults.removeObject(forKey: key)
@@ -157,4 +160,8 @@ nonisolated enum AppSettings {
     static var containerURL: URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
     }
+}
+
+extension Notification.Name {
+    static let periodTimesChanged = Notification.Name("periodTimesChanged")
 }

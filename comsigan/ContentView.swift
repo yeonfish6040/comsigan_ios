@@ -28,6 +28,7 @@ struct ContentView: View {
     /// 표가 밀려 들어올 방향. 다음 주로 넘기면 오른쪽에서 들어온다.
     @State private var goingForward = true
     @State private var timetable: Timetable?
+    @State private var serverPeriodTimes: [PeriodTime] = []
     @State private var classCounts: [Int] = []
     @State private var errorText: String?
     @State private var isLoading = false
@@ -77,6 +78,11 @@ struct ContentView: View {
         .frame(minWidth: 620, minHeight: 460)
         #endif
         .task { await load() }
+        .onAppear { applyPeriodTimes() }
+        .onReceive(NotificationCenter.default.publisher(for: .periodTimesChanged)) { notification in
+            guard notification.object as? Int == schoolCode else { return }
+            applyPeriodTimes()
+        }
         .onReceive(ticker) { now = $0 }
         .onChange(of: grade) { _, _ in
             klass = min(klass, max(classCount(for: grade), 1))
@@ -280,6 +286,7 @@ struct ContentView: View {
                 selectedWeek = document.todayWeek
             }
             let loaded = try document.timetable(grade: grade, klass: klass)
+            serverPeriodTimes = document.serverPeriodTimes
             withAnimation(.easeOut(duration: 0.18)) { timetable = loaded }
             errorText = nil
             // 위젯은 오늘이 낀 주만 보여주므로 그 주를 받아왔을 때만 다시 그린다.
@@ -288,6 +295,12 @@ struct ContentView: View {
             errorText = error.localizedDescription
             if timetable?.grade != grade || timetable?.klass != klass { timetable = nil }
         }
+    }
+
+    /// 이미 표시 중인 표에도 저장한 일과시간을 네트워크 요청 없이 반영한다.
+    private func applyPeriodTimes() {
+        guard timetable != nil else { return }
+        timetable?.periodTimes = AppSettings.resolvedPeriodTimes(school: schoolCode, server: serverPeriodTimes)
     }
 }
 

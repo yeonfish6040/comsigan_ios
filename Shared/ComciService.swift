@@ -19,28 +19,20 @@ nonisolated enum ComciService {
         let query = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard query.count >= 2 else { return [] }
 
-        let endpoint = await endpoint()
-        guard let url = endpoint.searchURL(query: query) else { return [] }
-
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 15
-        request.cachePolicy = .reloadIgnoringLocalCacheData
-        let (data, _) = try await URLSession.shared.data(for: request)
-
-        guard let object = try? JSONSerialization.jsonObject(with: sanitizedJSON(data)),
-              let root = object as? [String: Any],
-              let rows = root["학교검색"] as? [Any] else {
-            throw ComciError.malformedResponse
+        // 저장된 호출 상수가 바뀌었으면 열람 페이지에서 다시 확인하고 한 번 더 시도한다.
+        for retry in 0...1 {
+            do {
+                let endpoint = await endpoint(forceRefresh: retry > 0)
+                guard let url = endpoint.searchURL(query: query) else { throw ComciError.malformedResponse }
+                let data = try await fetch(url)
+                guard let root = try JSONSerialization.jsonObject(with: sanitizedJSON(data)) as? [String: Any],
+                      let rows = root["학교검색"] as? [Any] else { throw ComciError.malformedResponse }
+                return rows.compactMap { School(searchRow: $0) }
+            } catch {
+                if retry == 1 { throw error }
+            }
         }
-
-        // 한 줄이 [내부코드, 지역, 학교명, 학교코드] 형태다.
-        return rows.compactMap { row in
-            guard let fields = row as? [Any], fields.count >= 4,
-                  let region = fields[1] as? String,
-                  let schoolName = fields[2] as? String,
-                  let code = (fields[3] as? NSNumber)?.intValue else { return nil }
-            return School(code: code, name: schoolName, region: region)
-        }
+        throw ComciError.malformedResponse
     }
 
     // MARK: - 시간표
@@ -88,21 +80,23 @@ nonisolated enum ComciService {
         }
 
         do {
-            let endpoint = await endpoint()
-            guard let url = endpoint.timetableURL(schoolCode: school, week: week.r) else {
-                throw ComciError.malformedResponse
+            for retry in 0...1 {
+                do {
+                    let endpoint = await endpoint(forceRefresh: retry > 0)
+                    guard let url = endpoint.timetableURL(schoolCode: school, week: week.r) else {
+                        throw ComciError.malformedResponse
+                    }
+                    let data = try await fetch(url)
+                    let clean = try endpoint.documentData(data)
+                    let document = try ComciDocument(data: clean)
+                    guard !document.grades.isEmpty else { throw ComciError.malformedResponse }
+                    store(clean, school: school, week: week)
+                    return document
+                } catch {
+                    if retry == 1 { throw error }
+                }
             }
-            var request = URLRequest(url: url)
-            request.timeoutInterval = 15
-            request.cachePolicy = .reloadIgnoringLocalCacheData
-            let (data, response) = try await URLSession.shared.data(for: request)
-            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                throw ComciError.malformedResponse
-            }
-            let clean = sanitizedJSON(data)
-            let document = try ComciDocument(data: clean) // 파싱에 성공한 것만 캐시한다
-            store(clean, school: school, week: week)
-            return document
+            throw ComciError.malformedResponse
         } catch {
             // 네트워크가 끊겼으면 기한이 지난 캐시라도 쓴다.
             if let stale = cachedData(school: school, week: week, ignoringAge: true) {
@@ -122,11 +116,22 @@ nonisolated enum ComciService {
         return bytes
     }
 
+    private static func fetch(_ url: URL) async throws -> Data {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw ComciError.malformedResponse
+        }
+        return data
+    }
+
     // MARK: - 호출 상수
 
-    private static func endpoint() async -> ComciEndpoint {
+    private static func endpoint(forceRefresh: Bool = false) async -> ComciEndpoint {
         let defaults = AppSettings.defaults
-        if let stored = defaults.data(forKey: "endpoint"),
+        if !forceRefresh, let stored = defaults.data(forKey: "endpointV3"),
            let decoded = try? JSONDecoder().decode(ComciEndpoint.self, from: stored),
            Date().timeIntervalSince(defaults.object(forKey: "endpointCheckedAt") as? Date ?? .distantPast) < endpointLifetime {
             return decoded
@@ -136,7 +141,7 @@ nonisolated enum ComciService {
             return ComciEndpoint.fallback
         }
         if let encoded = try? JSONEncoder().encode(discovered) {
-            defaults.set(encoded, forKey: "endpoint")
+            defaults.set(encoded, forKey: "endpointV3")
             defaults.set(Date(), forKey: "endpointCheckedAt")
         }
         return discovered

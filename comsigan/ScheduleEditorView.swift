@@ -159,8 +159,8 @@ struct ScheduleEditorView: View {
     }
 
     private func save() {
-        // 서버 값과 같아졌으면 보정을 들고 있을 이유가 없다.
-        AppSettings.setPeriodTimes(times == serverTimes ? nil : times, school: school.code)
+        // 서버 값으로 되돌린 경우도 명시적인 선택이다. 지우면 기본 보정값이 다시 적용된다.
+        AppSettings.setPeriodTimes(times, school: school.code)
         WidgetCenter.shared.reloadAllTimelines()
         #if os(iOS)
         WatchSettingsSync.shared.push()

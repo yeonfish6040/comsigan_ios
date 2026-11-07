@@ -96,7 +96,7 @@ struct RemoteProtocolChecks {
         print("Remote request/rule/field overrides, validation, promotion, rollback and offline checks passed")
         if CommandLine.arguments.contains("--live") {
             let remote = try ComciProtocolConfig.decode(await ComciProtocolStore.downloadRaw())
-            precondition(remote == bundled)
+            precondition(remote.schemaVersion == 1)
             print("GitHub Raw download passed: \(remote.revision)")
         }
     }

@@ -8,6 +8,7 @@ cd "$project_dir"
 swiftc -parse-as-library \
     Shared/ComciEndpoint.swift \
     Shared/ComciDocument.swift \
+    Shared/ComciService.swift \
     Shared/TimetableModels.swift \
     Shared/AppSettings.swift \
     Shared/WidgetTheme.swift \

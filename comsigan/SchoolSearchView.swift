@@ -81,7 +81,7 @@ struct SchoolSearchView: View {
             if results.isEmpty { message = "검색 결과가 없습니다." }
         } catch {
             results = []
-            message = error.localizedDescription
+            message = ComciError.message(for: error)
         }
     }
 }

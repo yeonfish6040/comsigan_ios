@@ -21,24 +21,34 @@ nonisolated struct ComciEndpoint: Codable, Sendable, Equatable {
     /// 열람 페이지에 공개된 응답 복호화 키. nil이면 예전 평문 프로토콜이다.
     var encryptionKey: String? = nil
     var fieldNames: [String: String]? = nil
+    var responseFormat: String? = nil
+    var encryptedSearch: Bool? = nil
 
     static let host = "http://comci.net:4082"
     static let fallback = ComciEndpoint(
-        route: "937001", searchPrefix: "44704l", dataPrefix: "74173_",
-        encryptionKey: "6f428ea903c751d0b82f649d1e703ac5d4892fb601e8c347a5d09b2cf316784e",
-        fieldNames: ["자료481": "자료121", "자료147": "자료139", "자료245": "자료151",
-                     "자료446": "자료148", "자료492": "자료178", "자료244": "자료100"]
+        route: "952563", searchPrefix: "21326l", dataPrefix: "10893_",
+        encryptionKey: "08061397ca3616e62f72c905b1ca6a0dda0584b7e357507831f0175668e165bd",
+        fieldNames: ["자료481": "자료199", "자료147": "자료112", "자료245": "자료145",
+                     "자료446": "자료102", "자료492": "자료142", "자료244": "자료162"],
+        responseFormat: "enc5", encryptedSearch: true
     )
 
-    /// 학교명 검색 URL. 질의는 EUC-KR로 퍼센트 인코딩해야 한다.
+    /// 새 프로토콜은 UTF-8 검색어를 URI 인코딩하고 요청 전체를 Base64로 묶는다. 예전 서버는 EUC-KR이다.
     func searchURL(query: String) -> URL? {
+        if encryptedSearch == true {
+            let encoded = Self.encodeURIComponent(query)
+            let payload = "\(searchPrefix)\(encoded)_\(responseFormat ?? "enc5")"
+            let token = Self.encodeURIComponent(Data(payload.utf8).base64EncodedString())
+            return URL(string: "\(Self.host)/\(route)?\(token)")
+        }
         guard let encoded = String.eucKRPercentEncoded(query), !encoded.isEmpty else { return nil }
         return URL(string: "\(Self.host)/\(route)?\(searchPrefix)\(encoded)")
     }
 
     /// 시간표 URL. `<dataPrefix><학교코드>_0_<주차>`를 base64로 넘긴다.
     func timetableURL(schoolCode: Int, week: Int = 1) -> URL? {
-        let payload = "\(dataPrefix)\(schoolCode)_0_\(week)" + (encryptionKey == nil ? "" : "_enc2")
+        let format = responseFormat ?? (encryptionKey == nil ? nil : "enc2")
+        let payload = "\(dataPrefix)\(schoolCode)_0_\(week)" + (format.map { "_" + $0 } ?? "")
         let token = Data(payload.utf8).base64EncodedString()
         return URL(string: "\(Self.host)/\(route)?\(token)")
     }
@@ -48,7 +58,11 @@ nonisolated struct ComciEndpoint: Codable, Sendable, Equatable {
         guard let url = URL(string: "\(host)/st") else { return fallback }
         var request = URLRequest(url: url)
         request.timeoutInterval = 10
-        let (data, _) = try await URLSession.shared.data(for: request)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw ComciError.malformedResponse
+        }
         let html = String(data: data, encoding: .eucKR) ?? String(decoding: data, as: UTF8.self)
 
         return try parse(html: html)
@@ -59,40 +73,52 @@ nonisolated struct ComciEndpoint: Codable, Sendable, Equatable {
         var source = html
         let wrapper = try NSRegularExpression(pattern: #"\}\)\((\[\[.*?\]\]),\s*(\d+)\);"#,
                                               options: .dotMatchesLineSeparators)
-        for match in wrapper.matches(in: html, range: NSRange(html.startIndex..., in: html)) {
-            guard let arrayRange = Range(match.range(at: 1), in: html),
-                  let keyRange = Range(match.range(at: 2), in: html),
-                  let key = Int(html[keyRange]),
-                  let bytes = String(html[arrayRange]).data(using: .utf8),
-                  let chunks = try JSONSerialization.jsonObject(with: bytes) as? [[Any]] else {
-                throw ComciError.malformedResponse
-            }
-            var decoded = ""
-            for chunk in chunks {
-                guard chunk.count == 2, let flag = chunk[0] as? Int, let text = chunk[1] as? String else {
+        var layer = html
+        for depth in 0..<8 {
+            let matches = wrapper.matches(in: layer, range: NSRange(layer.startIndex..., in: layer))
+            if matches.isEmpty { break }
+            guard depth < 7, source.utf8.count < 2_000_000 else { throw ComciError.malformedResponse }
+            var nextLayer = ""
+            for match in matches {
+                guard let arrayRange = Range(match.range(at: 1), in: layer),
+                      let keyRange = Range(match.range(at: 2), in: layer),
+                      let key = Int(layer[keyRange]), (0...255).contains(key),
+                      let bytes = String(layer[arrayRange]).data(using: .utf8),
+                      let chunks = try JSONSerialization.jsonObject(with: bytes) as? [[Any]] else {
                     throw ComciError.malformedResponse
                 }
-                if flag != 0 { decoded += text; continue }
-                let chars = Array(text.utf8)
-                guard chars.count % 4 == 0 else { throw ComciError.malformedResponse }
-                var units: [UInt16] = []
-                for offset in stride(from: 0, to: chars.count, by: 4) {
-                    guard let code = UInt16(String(decoding: chars[offset..<offset + 4], as: UTF8.self), radix: 16) else {
+                var decoded = ""
+                for chunk in chunks {
+                    guard chunk.count == 2, let flag = chunk[0] as? Int, let text = chunk[1] as? String else {
                         throw ComciError.malformedResponse
                     }
-                    units.append(code ^ UInt16((key + offset / 4 * 13) & 255))
+                    if flag != 0 { decoded += text; continue }
+                    let chars = Array(text.utf8)
+                    guard chars.count % 4 == 0 else { throw ComciError.malformedResponse }
+                    var units: [UInt16] = []
+                    for offset in stride(from: 0, to: chars.count, by: 4) {
+                        guard let code = UInt16(String(decoding: chars[offset..<offset + 4], as: UTF8.self), radix: 16) else {
+                            throw ComciError.malformedResponse
+                        }
+                        units.append(code ^ UInt16((key + offset / 4 * 13) & 255))
+                    }
+                    decoded += String(decoding: units, as: UTF16.self)
                 }
-                decoded += String(decoding: units, as: UTF16.self)
+                nextLayer += "\n" + decoded
             }
-            source += "\n" + decoded
+            source += nextLayer
+            layer = nextLayer
         }
         guard let route = source.firstMatch(#"\./(\d+)\?"#),
-              let searchPrefix = source.firstMatch(#"\?(\d+l)['"]"#),
+              let searchPrefix = source.firstMatch(#"btoa\(['"](\d+l)['"]\+encodeURIComponent\(sc\)"#)
+                ?? source.firstMatch(#"\?(\d+l)['"]"#),
               let dataPrefix = source.firstMatch(#"sc_data\(['"](\d+_)['"]"#) else {
             throw ComciError.malformedResponse
         }
-        let key = source.firstMatch(#"var\s+key\s*=\s*CryptoJS\.enc\.Hex\.parse\(['"]([0-9a-f]{64})['"]\)"#)
-        if source.contains("_enc2"), key == nil { throw ComciError.malformedResponse }
+        let key = try responseKey(in: source)
+        let format = source.firstMatch(#"['"]_(enc\d+)['"]"#)
+        if format != nil, key == nil { throw ComciError.malformedResponse }
+        let searchIsEncrypted = source.contains("encodeURIComponent(btoa(")
         let patterns = [
             "자료481": #"원자료\s*=\s*Q자료\(자료\.(자료\d+)\["#,
             "자료147": #"일일자료\s*=\s*Q자료\(자료\.(자료\d+)\["#,
@@ -107,19 +133,24 @@ nonisolated struct ComciEndpoint: Codable, Sendable, Equatable {
         }
         if key != nil, fields.count != patterns.count { throw ComciError.malformedResponse }
         return ComciEndpoint(route: route, searchPrefix: searchPrefix, dataPrefix: dataPrefix,
-                             encryptionKey: key, fieldNames: fields.isEmpty ? nil : fields)
+                             encryptionKey: key, fieldNames: fields.isEmpty ? nil : fields,
+                             responseFormat: format, encryptedSearch: searchIsEncrypted)
     }
 
-    /// enc1(16진수) / enc2(Base64): HMAC 검증 후 AES-CBC/PKCS7로 복호화한다.
+    /// enc1(16진수), enc2·enc5(Base64): HMAC 검증 후 AES-CBC/PKCS7로 복호화한다.
     func decodedResponse(_ data: Data) throws -> Data {
         let text = String(decoding: data, as: UTF8.self).trimmingCharacters(in: CharacterSet(charactersIn: "\0"))
-        guard text.hasPrefix("enc1:") || text.hasPrefix("enc2:") else { return data }
         let parts = text.components(separatedBy: ":")
+        let formats = ["enc1", "enc2", "enc5", responseFormat].compactMap { $0 }
+        guard let format = parts.first, formats.contains(format) else {
+            if text.hasPrefix("enc") { throw ComciError.malformedResponse }
+            return data
+        }
         guard parts.count == 4, let keyText = encryptionKey, let key = Self.hexData(keyText), key.count == 32 else {
             throw ComciError.malformedResponse
         }
         let binary = try parts.dropFirst().map { part -> Data in
-            if parts[0] == "enc2", let bytes = Data(base64Encoded: part), bytes.base64EncodedString() == part {
+            if parts[0] != "enc1", let bytes = Data(base64Encoded: part), bytes.base64EncodedString() == part {
                 return bytes
             }
             if parts[0] == "enc1", let bytes = Self.hexData(part),
@@ -173,6 +204,36 @@ nonisolated struct ComciEndpoint: Codable, Sendable, Equatable {
             throw ComciError.malformedResponse
         }
         return try JSONSerialization.data(withJSONObject: root)
+    }
+
+    /// 공개 스크립트의 리터럴 키 또는 리터럴 배열 조각의 연결만 읽는다. JS는 실행하지 않는다.
+    private static func responseKey(in source: String) throws -> String? {
+        if let direct = source.firstMatch(#"var\s+key\s*=\s*CryptoJS\.enc\.Hex\.parse\(['"]([0-9a-f]{64})['"]\)"#) {
+            return direct
+        }
+        let prefix = #"CryptoJS\.enc\.Hex\.parse\(\(function\(a\)\{return "#
+        guard let expression = source.firstMatch(prefix + #"((?:a\[\d+\]\+?)+);"#),
+              let literals = source.firstMatch(prefix + #"(?:a\[\d+\]\+?)+;\}\)\(\[([^\]]+)\]\)\)"#) else { return nil }
+        let json = "[" + literals.replacingOccurrences(of: "'", with: "\"") + "]"
+        guard let bytes = json.data(using: .utf8),
+              let fragments = try JSONSerialization.jsonObject(with: bytes) as? [String] else {
+            throw ComciError.malformedResponse
+        }
+        let indices = try NSRegularExpression(pattern: #"a\[(\d+)\]"#)
+        var key = ""
+        for match in indices.matches(in: expression, range: NSRange(expression.startIndex..., in: expression)) {
+            guard let range = Range(match.range(at: 1), in: expression), let index = Int(expression[range]),
+                  fragments.indices.contains(index) else { throw ComciError.malformedResponse }
+            key += fragments[index]
+        }
+        guard key.count == 64, hexData(key)?.count == 32 else { throw ComciError.malformedResponse }
+        return key
+    }
+
+    /// JavaScript encodeURIComponent와 같은 UTF-8 퍼센트 인코딩.
+    private static func encodeURIComponent(_ value: String) -> String {
+        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()")
+        return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
     }
 
     private static func hexData(_ text: String) -> Data? {

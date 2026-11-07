@@ -25,6 +25,8 @@ private enum MainTab: String, CaseIterable, Identifiable {
 }
 
 struct MainView: View {
+    @State private var updates = AppUpdateChecker()
+    @Environment(\.openURL) private var openURL
     @State private var tab: MainTab = .timetable
     @State private var showsTutorial = !AppSettings.isTutorialDone
     @State private var anchors = TutorialAnchors()
@@ -35,6 +37,14 @@ struct MainView: View {
             .frame(minWidth: 640, minHeight: 520)
             #endif
             .environment(anchors)
+            .environment(updates)
+            .task { await updates.check(automatically: true) }
+            .alert("업데이트가 있습니다", isPresented: $updates.showsUpdate) {
+                Button("업데이트") { openURL(updates.destination) }
+                Button("나중에", role: .cancel) {}
+            } message: {
+                Text("새 버전 \(updates.availableRelease?.version ?? "")을 App Store에서 받을 수 있습니다.")
+            }
             .overlay {
                 if showsTutorial {
                     TutorialOverlay(anchors: anchors) {

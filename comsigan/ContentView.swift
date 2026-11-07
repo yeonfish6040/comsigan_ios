@@ -292,7 +292,7 @@ struct ContentView: View {
             // 위젯은 오늘이 낀 주만 보여주므로 그 주를 받아왔을 때만 다시 그린다.
             if week.r == todayWeek { WidgetCenter.shared.reloadAllTimelines() }
         } catch {
-            errorText = error.localizedDescription
+            errorText = ComciError.message(for: error)
             if timetable?.grade != grade || timetable?.klass != klass { timetable = nil }
         }
     }

@@ -9,6 +9,7 @@ import SwiftUI
 private let privacyPolicyURL = URL(string: "https://sneaky-parrot-647.notion.site/3bb874aebd068010b5f4e988af1a677f")!
 
 struct AboutView: View {
+    @Environment(AppUpdateChecker.self) private var updates
     @State private var isEditingSchedule = false
 
     private var version: String {
@@ -21,6 +22,21 @@ struct AboutView: View {
             Text("버전 \(version)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            HStack {
+                Button(updates.isChecking ? "확인 중…" : "업데이트 확인") {
+                    Task { await updates.check() }
+                }
+                .disabled(updates.isChecking)
+                Link("App Store에서 보기", destination: updates.destination)
+            }
+            .font(.callout)
+            .padding(.top, 8)
+            if let message = updates.message {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
             Divider().padding(.vertical, 10)
 

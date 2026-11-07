@@ -22,10 +22,10 @@ nonisolated enum ComciService {
         // 저장된 호출 상수가 바뀌었으면 열람 페이지에서 다시 확인하고 한 번 더 시도한다.
         for retry in 0...1 {
             do {
-                let endpoint = await endpoint(forceRefresh: retry > 0)
+                let endpoint = try await endpoint(forceRefresh: retry > 0)
                 guard let url = endpoint.searchURL(query: query) else { throw ComciError.malformedResponse }
                 let data = try await fetch(url)
-                guard let root = try JSONSerialization.jsonObject(with: sanitizedJSON(data)) as? [String: Any],
+                guard let root = try JSONSerialization.jsonObject(with: sanitizedJSON(try endpoint.decodedResponse(data))) as? [String: Any],
                       let rows = root["학교검색"] as? [Any] else { throw ComciError.malformedResponse }
                 return rows.compactMap { School(searchRow: $0) }
             } catch {
@@ -82,7 +82,7 @@ nonisolated enum ComciService {
         do {
             for retry in 0...1 {
                 do {
-                    let endpoint = await endpoint(forceRefresh: retry > 0)
+                    let endpoint = try await endpoint(forceRefresh: retry > 0)
                     guard let url = endpoint.timetableURL(schoolCode: school, week: week.r) else {
                         throw ComciError.malformedResponse
                     }
@@ -129,19 +129,18 @@ nonisolated enum ComciService {
 
     // MARK: - 호출 상수
 
-    private static func endpoint(forceRefresh: Bool = false) async -> ComciEndpoint {
+    private static func endpoint(forceRefresh: Bool = false) async throws -> ComciEndpoint {
         let defaults = AppSettings.defaults
-        if !forceRefresh, let stored = defaults.data(forKey: "endpointV3"),
+        if !forceRefresh, let stored = defaults.data(forKey: "endpointV4"),
            let decoded = try? JSONDecoder().decode(ComciEndpoint.self, from: stored),
            Date().timeIntervalSince(defaults.object(forKey: "endpointCheckedAt") as? Date ?? .distantPast) < endpointLifetime {
             return decoded
         }
 
-        guard let discovered = try? await ComciEndpoint.discover() else {
-            return ComciEndpoint.fallback
-        }
+        // 탐색 실패를 예전 고정 주소로 덮으면 서버가 연결을 끊으며 원인을 숨긴다.
+        let discovered = try await ComciEndpoint.discover()
         if let encoded = try? JSONEncoder().encode(discovered) {
-            defaults.set(encoded, forKey: "endpointV3")
+            defaults.set(encoded, forKey: "endpointV4")
             defaults.set(Date(), forKey: "endpointCheckedAt")
         }
         return discovered

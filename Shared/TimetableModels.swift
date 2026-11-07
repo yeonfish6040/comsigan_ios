@@ -8,17 +8,28 @@
 import Foundation
 
 nonisolated enum ComciError: LocalizedError {
+    case connectionClosed
     case malformedResponse
     case classNotFound(grade: Int, klass: Int)
 
     var errorDescription: String? {
         switch self {
+        case .connectionClosed:
+            return "시간표 서버가 응답 전에 연결을 종료했습니다. 잠시 후 다시 시도해 주세요."
         case .malformedResponse:
             return "시간표 서버 응답을 해석하지 못했습니다."
         case let .classNotFound(grade, klass):
             return "\(grade)학년 \(klass)반 시간표가 없습니다."
         }
     }
+
+    static func message(for error: Error) -> String {
+        if let urlError = error as? URLError, urlError.code == .networkConnectionLost {
+            return ComciError.connectionClosed.localizedDescription
+        }
+        return error.localizedDescription
+    }
+
 }
 
 /// 한 교시에 해당하는 수업.

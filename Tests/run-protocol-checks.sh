@@ -6,6 +6,8 @@ check_dir=$(mktemp -d "${TMPDIR:-/tmp}/comsigan-protocol.XXXXXX")
 trap 'rm -rf "$check_dir"' EXIT HUP INT TERM
 cd "$project_dir"
 swiftc -parse-as-library \
+    Shared/ComciProtocolDefaults.swift \
+    Shared/ComciProtocolConfig.swift \
     Shared/ComciEndpoint.swift \
     Shared/ComciDocument.swift \
     Shared/ComciService.swift \

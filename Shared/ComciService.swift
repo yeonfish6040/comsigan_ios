@@ -19,20 +19,13 @@ nonisolated enum ComciService {
         let query = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard query.count >= 2 else { return [] }
 
-        // 저장된 호출 상수가 바뀌었으면 열람 페이지에서 다시 확인하고 한 번 더 시도한다.
-        for retry in 0...1 {
-            do {
-                let endpoint = try await endpoint(forceRefresh: retry > 0)
-                guard let url = endpoint.searchURL(query: query) else { throw ComciError.malformedResponse }
-                let data = try await fetch(url)
-                guard let root = try JSONSerialization.jsonObject(with: sanitizedJSON(try endpoint.decodedResponse(data))) as? [String: Any],
-                      let rows = root["학교검색"] as? [Any] else { throw ComciError.malformedResponse }
-                return rows.compactMap { School(searchRow: $0) }
-            } catch {
-                if retry == 1 { throw error }
-            }
+        return try await withEndpoint { endpoint in
+            guard let url = endpoint.searchURL(query: query) else { throw ComciError.malformedResponse }
+            let data = try await fetch(url)
+            guard let root = try JSONSerialization.jsonObject(with: sanitizedJSON(try endpoint.decodedResponse(data))) as? [String: Any],
+                  let rows = root[endpoint.config.school.root] as? [Any] else { throw ComciError.malformedResponse }
+            return rows.compactMap { School(searchRow: $0, fields: endpoint.config.school) }
         }
-        throw ComciError.malformedResponse
     }
 
     // MARK: - 시간표
@@ -80,23 +73,14 @@ nonisolated enum ComciService {
         }
 
         do {
-            for retry in 0...1 {
-                do {
-                    let endpoint = try await endpoint(forceRefresh: retry > 0)
-                    guard let url = endpoint.timetableURL(schoolCode: school, week: week.r) else {
-                        throw ComciError.malformedResponse
-                    }
-                    let data = try await fetch(url)
-                    let clean = try endpoint.documentData(data)
-                    let document = try ComciDocument(data: clean)
-                    guard !document.grades.isEmpty else { throw ComciError.malformedResponse }
-                    store(clean, school: school, week: week)
-                    return document
-                } catch {
-                    if retry == 1 { throw error }
-                }
+            return try await withEndpoint { endpoint in
+                guard let url = endpoint.timetableURL(schoolCode: school, week: week.r) else { throw ComciError.malformedResponse }
+                let clean = try endpoint.documentData(await fetch(url))
+                let document = try ComciDocument(data: clean)
+                guard !document.grades.isEmpty else { throw ComciError.malformedResponse }
+                store(clean, school: school, week: week)
+                return document
             }
-            throw ComciError.malformedResponse
         } catch {
             // 네트워크가 끊겼으면 기한이 지난 캐시라도 쓴다.
             if let stale = cachedData(school: school, week: week, ignoringAge: true) {
@@ -129,19 +113,40 @@ nonisolated enum ComciService {
 
     // MARK: - 호출 상수
 
-    private static func endpoint(forceRefresh: Bool = false) async throws -> ComciEndpoint {
+    private static func withEndpoint<T>(_ operation: (ComciEndpoint) async throws -> T) async throws -> T {
+        var lastError: Error = ComciError.malformedResponse
+        for refresh in [false, true] {
+            let candidates = await ComciProtocolStore.shared.candidates(forceRefresh: refresh)
+            for config in candidates {
+                do {
+                    let endpoint = try await endpoint(config: config, forceRefresh: refresh)
+                    let value = try await operation(endpoint)
+                    await ComciProtocolStore.shared.markWorking(config)
+                    return value
+                } catch is CancellationError { throw CancellationError() }
+                catch {
+                    lastError = error
+                    await ComciProtocolStore.shared.rejectCandidate(config)
+                }
+            }
+        }
+        throw lastError
+    }
+
+    private static func endpoint(config: ComciProtocolConfig, forceRefresh: Bool) async throws -> ComciEndpoint {
+        if !config.discovery.enabled { return config.fixedEndpoint() }
         let defaults = AppSettings.defaults
-        if !forceRefresh, let stored = defaults.data(forKey: "endpointV4"),
+        let key = "configuredComciEndpointV1"
+        if !forceRefresh, let stored = defaults.data(forKey: key),
            let decoded = try? JSONDecoder().decode(ComciEndpoint.self, from: stored),
-           Date().timeIntervalSince(defaults.object(forKey: "endpointCheckedAt") as? Date ?? .distantPast) < endpointLifetime {
+           decoded.protocolConfig?.cacheID == config.cacheID,
+           Date().timeIntervalSince(defaults.object(forKey: key + "CheckedAt") as? Date ?? .distantPast) < endpointLifetime {
             return decoded
         }
-
-        // 탐색 실패를 예전 고정 주소로 덮으면 서버가 연결을 끊으며 원인을 숨긴다.
-        let discovered = try await ComciEndpoint.discover()
+        let discovered = try await ComciEndpoint.discover(config: config)
         if let encoded = try? JSONEncoder().encode(discovered) {
-            defaults.set(encoded, forKey: "endpointV4")
-            defaults.set(Date(), forKey: "endpointCheckedAt")
+            defaults.set(encoded, forKey: key)
+            defaults.set(Date(), forKey: key + "CheckedAt")
         }
         return discovered
     }

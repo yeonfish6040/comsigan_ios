@@ -25,37 +25,33 @@ nonisolated struct ComciEndpoint: Codable, Sendable, Equatable {
     var encryptedSearch: Bool? = nil
 
     static let host = "http://comci.net:4082"
-    static let fallback = ComciEndpoint(
-        route: "952563", searchPrefix: "21326l", dataPrefix: "10893_",
-        encryptionKey: "08061397ca3616e62f72c905b1ca6a0dda0584b7e357507831f0175668e165bd",
-        fieldNames: ["자료481": "자료199", "자료147": "자료112", "자료245": "자료145",
-                     "자료446": "자료102", "자료492": "자료142", "자료244": "자료162"],
-        responseFormat: "enc5", encryptedSearch: true
-    )
+    var protocolConfig: ComciProtocolConfig? = nil
+    var config: ComciProtocolConfig { protocolConfig ?? .bundled }
+    static let fallback = ComciProtocolConfig.bundled.fixedEndpoint()
 
     /// 새 프로토콜은 UTF-8 검색어를 URI 인코딩하고 요청 전체를 Base64로 묶는다. 예전 서버는 EUC-KR이다.
     func searchURL(query: String) -> URL? {
-        if encryptedSearch == true {
-            let encoded = Self.encodeURIComponent(query)
-            let payload = "\(searchPrefix)\(encoded)_\(responseFormat ?? "enc5")"
-            let token = Self.encodeURIComponent(Data(payload.utf8).base64EncodedString())
-            return URL(string: "\(Self.host)/\(route)?\(token)")
-        }
-        guard let encoded = String.eucKRPercentEncoded(query), !encoded.isEmpty else { return nil }
-        return URL(string: "\(Self.host)/\(route)?\(searchPrefix)\(encoded)")
+        let name = encryptedSearch == true ? "search" : "legacySearch"
+        guard let request = config.requests[name],
+              let token = try? request.token(variables: variables(query: query)) else { return nil }
+        return URL(string: "\(config.baseURL)/\(route)?\(token)")
     }
 
-    /// 시간표 URL. `<dataPrefix><학교코드>_0_<주차>`를 base64로 넘긴다.
     func timetableURL(schoolCode: Int, week: Int = 1) -> URL? {
-        let format = responseFormat ?? (encryptionKey == nil ? nil : "enc2")
-        let payload = "\(dataPrefix)\(schoolCode)_0_\(week)" + (format.map { "_" + $0 } ?? "")
-        let token = Data(payload.utf8).base64EncodedString()
-        return URL(string: "\(Self.host)/\(route)?\(token)")
+        guard let request = config.requests["timetable"],
+              let token = try? request.token(variables: variables(school: schoolCode, week: week)) else { return nil }
+        return URL(string: "\(config.baseURL)/\(route)?\(token)")
+    }
+
+    private func variables(query: String = "", school: Int = 0, week: Int = 1) -> [String: String] {
+        ["query": query, "school": String(school), "week": String(week), "searchPrefix": searchPrefix,
+         "dataPrefix": dataPrefix, "format": responseFormat ?? "enc2"]
     }
 
     /// 열람 페이지를 긁어 상수를 갱신한다.
-    static func discover() async throws -> ComciEndpoint {
-        guard let url = URL(string: "\(host)/st") else { return fallback }
+    static func discover(config: ComciProtocolConfig = .bundled) async throws -> ComciEndpoint {
+        if !config.discovery.enabled { return config.fixedEndpoint() }
+        guard let url = URL(string: config.baseURL + config.discovery.path) else { throw ComciProtocolError.invalidConfiguration }
         var request = URLRequest(url: url)
         request.timeoutInterval = 10
         request.cachePolicy = .reloadIgnoringLocalCacheData
@@ -63,21 +59,23 @@ nonisolated struct ComciEndpoint: Codable, Sendable, Equatable {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw ComciError.malformedResponse
         }
-        let html = String(data: data, encoding: .eucKR) ?? String(decoding: data, as: UTF8.self)
+        let encoding: String.Encoding = config.discovery.encoding == "eucKR" ? .eucKR : .utf8
+        let html = String(data: data, encoding: encoding) ?? String(decoding: data, as: UTF8.self)
 
-        return try parse(html: html)
+        return try parse(html: html, config: config)
     }
 
     /// JavaScript를 실행하지 않고 알려진 XOR 래퍼의 데이터만 복원한다.
-    static func parse(html: String) throws -> ComciEndpoint {
+    static func parse(html: String, config: ComciProtocolConfig = .bundled) throws -> ComciEndpoint {
+        guard html.utf8.count <= 2_000_000 else { throw ComciError.malformedResponse }
+        let rules = config.discovery
         var source = html
-        let wrapper = try NSRegularExpression(pattern: #"\}\)\((\[\[.*?\]\]),\s*(\d+)\);"#,
-                                              options: .dotMatchesLineSeparators)
+        let wrapper = try NSRegularExpression(pattern: rules.wrapperPattern, options: .dotMatchesLineSeparators)
         var layer = html
-        for depth in 0..<8 {
+        for depth in 0..<rules.maxDepth {
             let matches = wrapper.matches(in: layer, range: NSRange(layer.startIndex..., in: layer))
             if matches.isEmpty { break }
-            guard depth < 7, source.utf8.count < 2_000_000 else { throw ComciError.malformedResponse }
+            guard depth < rules.maxDepth - 1, source.utf8.count < 2_000_000 else { throw ComciError.malformedResponse }
             var nextLayer = ""
             for match in matches {
                 guard let arrayRange = Range(match.range(at: 1), in: layer),
@@ -109,51 +107,50 @@ nonisolated struct ComciEndpoint: Codable, Sendable, Equatable {
             source += nextLayer
             layer = nextLayer
         }
-        guard let route = source.firstMatch(#"\./(\d+)\?"#),
-              let searchPrefix = source.firstMatch(#"btoa\(['"](\d+l)['"]\+encodeURIComponent\(sc\)"#)
-                ?? source.firstMatch(#"\?(\d+l)['"]"#),
-              let dataPrefix = source.firstMatch(#"sc_data\(['"](\d+_)['"]"#) else {
-            throw ComciError.malformedResponse
+        func extract(_ name: String) -> String? {
+            for pattern in rules.patterns[name] ?? [] {
+                if let value = source.firstMatch(pattern) { return value }
+            }
+            return nil
         }
-        let key = try responseKey(in: source)
-        let format = source.firstMatch(#"['"]_(enc\d+)['"]"#)
+        guard let route = extract("route"), let searchPrefix = extract("searchPrefix"),
+              let dataPrefix = extract("dataPrefix") else { throw ComciError.malformedResponse }
+        let key = try responseKey(in: source, rules: rules)
+        let format = extract("format")
         if format != nil, key == nil { throw ComciError.malformedResponse }
-        let searchIsEncrypted = source.contains("encodeURIComponent(btoa(")
-        let patterns = [
-            "자료481": #"원자료\s*=\s*Q자료\(자료\.(자료\d+)\["#,
-            "자료147": #"일일자료\s*=\s*Q자료\(자료\.(자료\d+)\["#,
-            "자료245": #"var\s+m3\s*=\s*자료\.(자료\d+)\["#,
-            "자료446": #"Q성명\(자료\.(자료\d+)\["#,
-            "자료492": #"Q과목명\(자료\.(자료\d+)\["#,
-            "자료244": #"text\(['"]수정일:\s*['"]\s*\+\s*H시간표\.(자료\d+)"#,
-        ]
-        var fields: [String: String] = [:]
+        let searchIsEncrypted = source.range(of: rules.encodedSearchPattern, options: .regularExpression) != nil
+        let patterns = rules.fieldPatterns
+        var fields = config.endpoint.fieldNames
+        var extracted = 0
         for (canonical, pattern) in patterns {
-            if let value = source.firstMatch(pattern) { fields[canonical] = value }
+            if let value = source.firstMatch(pattern) { fields[canonical] = value; extracted += 1 }
         }
-        if key != nil, fields.count != patterns.count { throw ComciError.malformedResponse }
+        if key != nil, extracted != patterns.count { throw ComciError.malformedResponse }
         return ComciEndpoint(route: route, searchPrefix: searchPrefix, dataPrefix: dataPrefix,
                              encryptionKey: key, fieldNames: fields.isEmpty ? nil : fields,
-                             responseFormat: format, encryptedSearch: searchIsEncrypted)
+                             responseFormat: format, encryptedSearch: searchIsEncrypted, protocolConfig: config)
     }
 
     /// enc1(16진수), enc2·enc5(Base64): HMAC 검증 후 AES-CBC/PKCS7로 복호화한다.
     func decodedResponse(_ data: Data) throws -> Data {
         let text = String(decoding: data, as: UTF8.self).trimmingCharacters(in: CharacterSet(charactersIn: "\0"))
         let parts = text.components(separatedBy: ":")
-        let formats = ["enc1", "enc2", "enc5", responseFormat].compactMap { $0 }
+        let response = config.response
+        let hexFormats = response.hexFormats.map { $0.replacingOccurrences(of: "{format}", with: responseFormat ?? "enc2") }
+        let base64Formats = response.base64Formats.map { $0.replacingOccurrences(of: "{format}", with: responseFormat ?? "enc2") }
+        let formats = hexFormats + base64Formats
         guard let format = parts.first, formats.contains(format) else {
-            if text.hasPrefix("enc") { throw ComciError.malformedResponse }
+            if text.hasPrefix("enc") || !response.allowPlaintext { throw ComciError.malformedResponse }
             return data
         }
         guard parts.count == 4, let keyText = encryptionKey, let key = Self.hexData(keyText), key.count == 32 else {
             throw ComciError.malformedResponse
         }
         let binary = try parts.dropFirst().map { part -> Data in
-            if parts[0] != "enc1", let bytes = Data(base64Encoded: part), bytes.base64EncodedString() == part {
+            if base64Formats.contains(parts[0]), let bytes = Data(base64Encoded: part), bytes.base64EncodedString() == part {
                 return bytes
             }
-            if parts[0] == "enc1", let bytes = Self.hexData(part),
+            if hexFormats.contains(parts[0]), let bytes = Self.hexData(part),
                bytes.map({ String(format: "%02x", $0) }).joined() == part { return bytes }
             throw ComciError.malformedResponse
         }
@@ -207,19 +204,22 @@ nonisolated struct ComciEndpoint: Codable, Sendable, Equatable {
     }
 
     /// 공개 스크립트의 리터럴 키 또는 리터럴 배열 조각의 연결만 읽는다. JS는 실행하지 않는다.
-    private static func responseKey(in source: String) throws -> String? {
-        if let direct = source.firstMatch(#"var\s+key\s*=\s*CryptoJS\.enc\.Hex\.parse\(['"]([0-9a-f]{64})['"]\)"#) {
-            return direct
+    private static func responseKey(in source: String, rules: ComciProtocolConfig.Discovery) throws -> String? {
+        for pattern in rules.patterns["key"] ?? [] {
+            if let direct = source.firstMatch(pattern) { return direct }
         }
-        let prefix = #"CryptoJS\.enc\.Hex\.parse\(\(function\(a\)\{return "#
-        guard let expression = source.firstMatch(prefix + #"((?:a\[\d+\]\+?)+);"#),
-              let literals = source.firstMatch(prefix + #"(?:a\[\d+\]\+?)+;\}\)\(\[([^\]]+)\]\)\)"#) else { return nil }
-        let json = "[" + literals.replacingOccurrences(of: "'", with: "\"") + "]"
+        let regex = try NSRegularExpression(pattern: rules.splitKeyPattern)
+        guard let match = regex.firstMatch(in: source, range: NSRange(source.startIndex..., in: source)),
+              match.numberOfRanges >= 3,
+              let expressionRange = Range(match.range(at: 1), in: source),
+              let arrayRange = Range(match.range(at: 2), in: source) else { return nil }
+        let expression = String(source[expressionRange])
+        let json = String(source[arrayRange]).replacingOccurrences(of: "'", with: "\"")
         guard let bytes = json.data(using: .utf8),
               let fragments = try JSONSerialization.jsonObject(with: bytes) as? [String] else {
             throw ComciError.malformedResponse
         }
-        let indices = try NSRegularExpression(pattern: #"a\[(\d+)\]"#)
+        let indices = try NSRegularExpression(pattern: rules.keyIndexPattern)
         var key = ""
         for match in indices.matches(in: expression, range: NSRange(expression.startIndex..., in: expression)) {
             guard let range = Range(match.range(at: 1), in: expression), let index = Int(expression[range]),
@@ -228,12 +228,6 @@ nonisolated struct ComciEndpoint: Codable, Sendable, Equatable {
         }
         guard key.count == 64, hexData(key)?.count == 32 else { throw ComciError.malformedResponse }
         return key
-    }
-
-    /// JavaScript encodeURIComponent와 같은 UTF-8 퍼센트 인코딩.
-    private static func encodeURIComponent(_ value: String) -> String {
-        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()")
-        return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
     }
 
     private static func hexData(_ text: String) -> Data? {
@@ -267,11 +261,14 @@ nonisolated struct School: Codable, Sendable, Hashable, Identifiable {
     var region: String
 
     /// 검색 응답은 첫 값에 따라 실제 학교 코드가 놓이는 열이 달라진다.
-    init?(searchRow: Any) {
-        guard let fields = searchRow as? [Any], fields.count >= 4,
-              let marker = fields[0] as? NSNumber,
-              let region = fields[1] as? String, let name = fields[2] as? String else { return nil }
-        let index = marker.intValue / 6347 + 2
+    init?(searchRow: Any, fields layout: ComciProtocolConfig.SchoolFields = ComciProtocolConfig.bundled.school) {
+        guard let fields = searchRow as? [Any], !fields.isEmpty,
+              [layout.markerIndex, layout.regionIndex, layout.nameIndex].allSatisfy({ fields.indices.contains($0) }),
+              let marker = fields[layout.markerIndex] as? NSNumber,
+              let region = fields[layout.regionIndex] as? String, let name = fields[layout.nameIndex] as? String,
+              marker.intValue >= 0 else { return nil }
+        let (index, overflow) = (marker.intValue / layout.codeDivisor).addingReportingOverflow(layout.codeOffset)
+        guard !overflow else { return nil }
         guard fields.indices.contains(index), let code = fields[index] as? NSNumber, code.intValue > 0 else { return nil }
         self.init(code: code.intValue, name: name, region: region)
     }

@@ -1,0 +1,114 @@
+import Foundation
+
+nonisolated enum ComciProtocolDefaults {
+    static let json = #"""
+{
+  "schemaVersion": 1,
+  "revision": "2026-11-07.1",
+  "baseURL": "http://comci.net:4082",
+  "refreshSeconds": 900,
+  "discovery": {
+    "enabled": true,
+    "path": "/st",
+    "encoding": "eucKR",
+    "maxDepth": 8,
+    "wrapperPattern": "\\}\\)\\((\\[\\[.*?\\]\\]),\\s*(\\d+)\\);",
+    "patterns": {
+      "route": [
+        "\\./(\\d+)\\?"
+      ],
+      "searchPrefix": [
+        "btoa\\(['\"](\\d+l)['\"]\\s*\\+\\s*encodeURIComponent\\(sc\\)",
+        "\\?(\\d+l)['\"]"
+      ],
+      "dataPrefix": [
+        "sc_data\\(['\"](\\d+_)['\"]"
+      ],
+      "key": [
+        "var\\s+key\\s*=\\s*CryptoJS\\.enc\\.Hex\\.parse\\(['\"]([0-9a-f]{64})['\"]\\)"
+      ],
+      "format": [
+        "['\"]_(enc\\d+)['\"]"
+      ]
+    },
+    "encodedSearchPattern": "btoa\\(['\"]\\d+l['\"]\\s*\\+\\s*encodeURIComponent\\(",
+    "splitKeyPattern": "CryptoJS\\.enc\\.Hex\\.parse\\(\\(function\\(a\\)\\{return\\s+((?:a\\[\\d+\\]\\+)*a\\[\\d+\\]);\\}\\)\\((\\[[^]]+\\])\\)\\)",
+    "keyIndexPattern": "a\\[(\\d+)\\]",
+    "fieldPatterns": {
+      "자료481": "원자료\\s*=\\s*Q자료\\(자료\\.(자료\\d+)\\[",
+      "자료147": "일일자료\\s*=\\s*Q자료\\(자료\\.(자료\\d+)\\[",
+      "자료245": "var\\s+m3\\s*=\\s*자료\\.(자료\\d+)\\[",
+      "자료446": "Q성명\\(자료\\.(자료\\d+)\\[",
+      "자료492": "Q과목명\\(자료\\.(자료\\d+)\\[",
+      "자료244": "['\"]수정일:\\s*['\"]\\s*\\+\\s*H시간표\\.(자료\\d+)"
+    }
+  },
+  "endpoint": {
+    "route": "952563",
+    "searchPrefix": "21326l",
+    "dataPrefix": "10893_",
+    "encryptionKey": "08061397ca3616e62f72c905b1ca6a0dda0584b7e357507831f0175668e165bd",
+    "responseFormat": "enc5",
+    "encryptedSearch": true,
+    "fieldNames": {
+      "자료481": "자료199",
+      "자료147": "자료112",
+      "자료245": "자료145",
+      "자료446": "자료102",
+      "자료492": "자료142",
+      "자료244": "자료162"
+    }
+  },
+  "requests": {
+    "search": {
+      "template": "{searchPrefix}{query}_{format}",
+      "variableTransforms": {
+        "query": [
+          "uri"
+        ]
+      },
+      "transforms": [
+        "base64",
+        "uri"
+      ]
+    },
+    "legacySearch": {
+      "template": "{searchPrefix}{query}",
+      "variableTransforms": {
+        "query": [
+          "eucKRURI"
+        ]
+      },
+      "transforms": []
+    },
+    "timetable": {
+      "template": "{dataPrefix}{school}_0_{week}_{format}",
+      "variableTransforms": {},
+      "transforms": [
+        "base64"
+      ]
+    }
+  },
+  "response": {
+    "cipher": "aes256-cbc-pkcs7",
+    "authentication": "hmac-sha256-key-sha256",
+    "allowPlaintext": true,
+    "hexFormats": [
+      "enc1"
+    ],
+    "base64Formats": [
+      "enc2",
+      "{format}"
+    ]
+  },
+  "school": {
+    "root": "학교검색",
+    "nameIndex": 2,
+    "regionIndex": 1,
+    "markerIndex": 0,
+    "codeDivisor": 6347,
+    "codeOffset": 2
+  }
+}
+"""#
+}
